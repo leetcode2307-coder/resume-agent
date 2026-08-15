@@ -1,0 +1,12 @@
+python-dotenv
+
+pydantic
+pydantic-settings
+
+langchain
+langchain-core
+langchain-community
+langchain-openrouter
+langgraph
+
+
