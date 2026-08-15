@@ -1,4 +1,4 @@
-from typing import List, Annotated
+from typing import List, Annotated,Optional
 from pydantic import BaseModel, Field
 
 
@@ -174,44 +174,50 @@ class InterviewerOutput(BaseModel):
     
 class RewriterOutput(BaseModel):
     """Output model for the rewriter agent."""
-    
     rewritten_resume: Annotated[
-            List[str]|None,
-            Field(
-                default=None,
-                description="Rewritten resume"
-            )
+        Optional[str],
+        Field(
+            default=None,
+            description="Rewritten resume as a single text block"
+        ),
     ]
-    
+
     rewritten_bullet_points: Annotated[
-                List[str]|None,
-                Field(
-                    default=None,
-                    description="rewritten bullet points"
-                )
+        List[str],
+        Field(
+            default_factory=list,
+            description="Rewritten bullet points"
+        ),
     ]
-    
+
     cover_letter: Annotated[
-                List[str]|None,
-                Field(
-                    default=None,
-                    description="cover letter"
-                )
+        Optional[str],
+        Field(
+            default=None,
+            description="Generated cover letter text"
+        ),
     ]
     
     
 
 class CriticOutput(BaseModel):
     """Structured output for the critic agent evaluation"""
-    
-    critic_score: float
-    """Quality score from 0-10"""
-    
-    critic_feedback: List[str]
-    """List of feedback points about the rewrite"""
-    
-    detected_errors: List[str]
-    """List of errors found in the rewritten content"""
-    
-    weak_phrasing: List[str]
-    """List of weak phrases or sentences that need improvement"""
+    critic_score: Annotated[
+        float,
+        Field(default=0.0, ge=0.0, le=10.0, description="Quality score from 0-10"),
+    ]
+
+    critic_feedback: Annotated[
+        List[str],
+        Field(default_factory=list, description="List of feedback points about the rewrite"),
+    ]
+
+    detected_errors: Annotated[
+        List[str],
+        Field(default_factory=list, description="List of errors found in the rewritten content"),
+    ]
+
+    weak_phrasing: Annotated[
+        List[str],
+        Field(default_factory=list, description="List of weak phrases or sentences that need improvement"),
+    ]
