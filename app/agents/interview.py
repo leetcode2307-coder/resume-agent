@@ -1,3 +1,4 @@
+import asyncio
 from app.graph.state import ResumeAgentState
 from app.llm import llm
 from app.schemas.resume import InterviewerOutput
@@ -6,7 +7,7 @@ from app.prompts import INTERVIWER_SYSTEM_PROMPT
 class InterviewPrepAgent:
     
     
-    def interview_agent(self,state : ResumeAgentState):
+    async def interview_agent(self,state : ResumeAgentState):
         """
         Generates likely interview question for the role
         """
@@ -33,7 +34,9 @@ class InterviewPrepAgent:
         Return the output strictly as a valid JSON object matching the InterviewerOutput schema. Do not include any extra commentary outside the JSON structure.
         """
         
-        result = structured_llm.invoke(
+        # Run the blocking LLM call in a thread to avoid blocking the event loop
+        result = await asyncio.to_thread(
+            structured_llm.invoke,
             [
                 ("system",INTERVIWER_SYSTEM_PROMPT),
                 ("human",prompt)

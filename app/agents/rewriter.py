@@ -1,3 +1,4 @@
+import asyncio
 from app.llm import llm
 from app.graph.state import ResumeAgentState
 from app.schemas.resume import RewriterOutput
@@ -5,7 +6,7 @@ from app.prompts import REWRITER_SYSTEM_PROMPT  # You'll need to create this
 
 class Rewriter:
     
-    def rewriter_node(self, state: ResumeAgentState):
+    async def rewriter_node(self, state: ResumeAgentState):
         """
         Rewrite the resume bullet points, tailor to JD keywords, draft cover letter
         """
@@ -67,7 +68,9 @@ class Rewriter:
         Return the result according to the required structured schema.
         """
         
-        result = structured_llm.invoke(
+        # Run the blocking LLM call in a thread to avoid blocking the event loop
+        result = await asyncio.to_thread(
+            structured_llm.invoke,
             [
                 ("system", REWRITER_SYSTEM_PROMPT),
                 ("human", prompt)

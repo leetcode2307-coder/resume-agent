@@ -1,3 +1,4 @@
+import asyncio
 from app.llm import llm
 from app.schemas.resume import AnalyzerOutput
 from app.prompts import ANALYZER_SYSTEM_PROMPT
@@ -6,7 +7,7 @@ from app.graph.state import ResumeAgentState
 class AnalyzerAgent:
     
         
-    def analyzer_node(self,state:ResumeAgentState):
+    async def analyzer_node(self,state:ResumeAgentState):
         """
         Analyzes the resume_text + job_description and determines the matching_skills,missing_skills,
         nice_to_have_skills,strengths,weaknesses,keyword_matches,keyword_gaps,ats_score,initial_match_score
@@ -38,7 +39,9 @@ class AnalyzerAgent:
         Return the result according to the required structured schema.
         """
         
-        result = structured_llm.invoke(
+        # Run the blocking LLM call in a thread to avoid blocking the event loop
+        result = await asyncio.to_thread(
+            structured_llm.invoke,
             [
                 ("system",ANALYZER_SYSTEM_PROMPT),
                 ("human",prompt)

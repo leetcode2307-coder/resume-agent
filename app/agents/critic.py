@@ -1,3 +1,4 @@
+import asyncio
 from app.llm import llm
 from app.prompts import CRITIC_AGENT_PROMPT
 from app.graph.state import ResumeAgentState
@@ -5,7 +6,7 @@ from app.schemas.resume import CriticOutput  # You'll need to create this
 
 class CriticAgent:
     
-    def critic_node(self, state: ResumeAgentState):
+    async def critic_node(self, state: ResumeAgentState):
         """
         Evaluate rewritten content then score quality between range 0 to 10,
         flag errors and weak parsing
@@ -98,7 +99,9 @@ class CriticAgent:
         Return the result according to the required structured schema.
         """
         
-        result = structured_llm.invoke(
+        # Run the blocking LLM call in a thread to avoid blocking the event loop
+        result = await asyncio.to_thread(
+            structured_llm.invoke,
             [
                 ("system", CRITIC_AGENT_PROMPT),
                 ("human", prompt)

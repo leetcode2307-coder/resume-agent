@@ -1,3 +1,5 @@
+import asyncio
+import inspect
 from langgraph.graph import StateGraph, START, END
 from app.agents.analyzer import analyzer
 from app.agents.interview import interviewer
@@ -44,24 +46,24 @@ def should_continue_rewriting(state: ResumeAgentState) -> str:
         return "rewriter_node"
 
 
-def workflow_result(resume_text:str,job_description:str):
+async def workflow_result_async(resume_text: str, job_description: str):
     """
-    Execute the complete workflow with the initial state
+    Execute the complete workflow with the initial state (async-aware)
     """
     # Create the state graph
     graph = StateGraph(ResumeAgentState)
-    
-    # Add nodes
+
+    # Add nodes (nodes may be async coroutines)
     graph.add_node('input_node', input_node)
     graph.add_node('analyzer_node', analyzer.analyzer_node)
     graph.add_node('rewriter_node', rewriter.rewriter_node)
     graph.add_node('critic_agent', critic_agent.critic_node)
     graph.add_node('interview_agent', interviewer.interview_agent)
-    
+
     # Add edges
     graph.add_edge(START, 'input_node')
     graph.add_edge('input_node', 'analyzer_node')
-    
+
     # Conditional edge from analyzer to either rewriter or interview agent
     graph.add_conditional_edges(
         'analyzer_node',
@@ -71,10 +73,10 @@ def workflow_result(resume_text:str,job_description:str):
             "interview_agent": "interview_agent"
         }
     )
-    
+
     # Edge from rewriter to critic agent
     graph.add_edge('rewriter_node', 'critic_agent')
-    
+
     # Conditional edge from critic agent to either continue rewriting or proceed to interview
     graph.add_conditional_edges(
         'critic_agent',
@@ -84,19 +86,31 @@ def workflow_result(resume_text:str,job_description:str):
             "interview_agent": "interview_agent"
         }
     )
-    
+
     # Edge from interview agent to END
     graph.add_edge('interview_agent', END)
-    
+
     # Compile the workflow
     workflow = graph.compile()
-    
+
     initial_state = {
         'resume_text': resume_text,
         'job_description': job_description
     }
-    
-    # Invoke the workflow
-    return workflow.invoke(initial_state)
 
+    # Invoke the workflow using the async API so async nodes are supported
+    # LangGraph provides `ainvoke` for async invocation
+    if hasattr(workflow, "ainvoke"):
+        return await workflow.ainvoke(initial_state)
+
+    # Fallback: if async API is not available, call invoke and await if needed
+    invocation = workflow.invoke(initial_state)
+    if inspect.isawaitable(invocation):
+        return await invocation
+    return invocation
+
+
+def workflow_result(resume_text: str, job_description: str):
+    """Sync wrapper kept for backwards compatibility; runs the async workflow."""
+    return asyncio.run(workflow_result_async(resume_text, job_description))
 
