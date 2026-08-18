@@ -94,15 +94,21 @@ async def workflow_result_async(resume_text: str, job_description: str):
     workflow = graph.compile()
 
     initial_state = {
-        'resume_text': resume_text,
-        'job_description': job_description
+        "resume_text": resume_text,
+        "job_description": job_description,
+        "rewrite_iteration": 0,
+        "max_rewrite_iterations": 3,
+        "critic_score": None,
+        "quality_threshold": 8,
     }
 
     # Invoke the workflow using the async API so async nodes are supported
     # LangGraph provides `ainvoke` for async invocation
     if hasattr(workflow, "ainvoke"):
-        return await workflow.ainvoke(initial_state)
-
+        result = await workflow.ainvoke(initial_state)
+        return{
+            'result' : result
+        }
     # Fallback: if async API is not available, call invoke and await if needed
     invocation = workflow.invoke(initial_state)
     if inspect.isawaitable(invocation):
