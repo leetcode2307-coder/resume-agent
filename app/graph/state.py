@@ -7,7 +7,16 @@ class ResumeAgentState(TypedDict, total=False):
     # =========================
     resume_text: str
     job_description: str
-
+    
+    # Contact info supplied directly by the user (never inferred/fabricated
+    # by the LLM). All optional since not every candidate provides every field.
+    full_name: Optional[str]
+    email: Optional[str]
+    phone: Optional[str]
+    linkedin_url: Optional[str]
+    github_url: Optional[str]
+    
+    
     # =========================
     # ANALYZER AGENT OUTPUT
     # =========================

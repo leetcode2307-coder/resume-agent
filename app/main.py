@@ -15,6 +15,14 @@ class WorkflowRequest(BaseModel):
     resume_text: str
     job_description: str
 
+    # Optional contact info supplied by the user. These are passed straight
+    # through to the LaTeX resume — never inferred or fabricated by the LLM.
+    full_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    linkedin_url: str | None = None
+    github_url: str | None = None
+
 
 @app.get("/")
 async def root():
@@ -34,14 +42,21 @@ async def workflow_result(request: WorkflowRequest):
     )
 
     # result may already be a dict, or (in other code paths) a JSON string.
-    # Normalize it instead of assuming one or the other.
     if isinstance(result, (str, bytes)):
         parsed = json.loads(result)
     else:
         parsed = result
 
-    # Unwrap "result" key only if it's actually nested that way
     state = parsed["result"] if "result" in parsed else parsed
+
+    # Merge user-supplied contact fields into state. These never come from
+    # the LLM pipeline, so they're added here explicitly rather than trusting
+    # the analyzer/rewriter/critic agents to know or invent them.
+    state["full_name"] = request.full_name
+    state["email"] = request.email
+    state["phone"] = request.phone
+    state["linkedin_url"] = request.linkedin_url
+    state["github_url"] = request.github_url
 
     latex_code = resume_builder(state=state)
 
@@ -57,4 +72,3 @@ async def workflow_result(request: WorkflowRequest):
         print(f"Error: {e}")
 
     return result
-    
