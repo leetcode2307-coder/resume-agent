@@ -160,6 +160,22 @@ def render_items(items: List[Any]) -> None:
             st.markdown(f"- {item}")
 
 
+def render_cover_letter(state: Dict[str, Any]) -> Set[str]:
+    """Render the generated cover letter, if present."""
+    if not state.get("cover_letter"):
+        return set()
+
+    st.markdown("### ✉️ Cover Letter")
+    st.text_area(
+        "Generated cover letter",
+        value=str(state["cover_letter"]),
+        height=500,
+        disabled=True,
+    )
+
+    return {"cover_letter"}
+
+
 def render_interview_prep(state: Dict[str, Any]) -> Set[str]:
     """
     Render the interview-prep fields (interview_questions, technical_questions,
@@ -292,27 +308,27 @@ def render_remaining(state: Dict[str, Any], already_consumed: Set[str]) -> None:
 # Sidebar
 # --------------------------------------------------------------------------
 
-# with st.sidebar:
-#     st.subheader("⚙️ Settings")
-#     st.session_state.api_url = st.text_input(
-#         "Backend API URL",
-#         value=st.session_state.get("api_url", get_api_url()),
-#         help="Base URL of the FastAPI service (no trailing slash).",
-#     )
-#     api_url = get_api_url()
+with st.sidebar:
+    st.subheader("⚙️ Settings")
+    st.session_state.api_url = st.text_input(
+        "Backend API URL",
+        value=st.session_state.get("api_url", get_api_url()),
+        help="Base URL of the FastAPI service (no trailing slash).",
+    )
+    api_url = get_api_url()
 
-#     healthy = check_health(api_url)
-#     if healthy:
-#         st.success("Backend reachable", icon="✅")
-#     else:
-#         st.error("Backend unreachable", icon="⚠️")
+    healthy = check_health(api_url)
+    if healthy:
+        st.success("Backend reachable", icon="✅")
+    else:
+        st.error("Backend unreachable", icon="⚠️")
 
-#     st.divider()
-#     st.caption(
-#         "PDF download works automatically only if this app can read the "
-#         "server's filesystem (e.g. local dev). Otherwise the file path is "
-#         "shown for reference."
-#     )
+    st.divider()
+    st.caption(
+        "PDF download works automatically only if this app can read the "
+        "server's filesystem (e.g. local dev). Otherwise the file path is "
+        "shown for reference."
+    )
 
 # --------------------------------------------------------------------------
 # Main — input form
@@ -416,4 +432,5 @@ if "last_result" in st.session_state:
     consumed_keys: set[str] = {"pdf_filename", "pdf_path"}
     consumed_keys |= render_analyzer_output(result)
     consumed_keys |= render_interview_prep(result)
+    consumed_keys |= render_cover_letter(result)
     render_remaining(result, consumed_keys)

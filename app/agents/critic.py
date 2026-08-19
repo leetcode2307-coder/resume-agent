@@ -114,6 +114,8 @@ class CriticAgent:
             'critic_feedback': result.critic_feedback,
             'detected_errors': result.detected_errors,
             'weak_phrasing': result.weak_phrasing,
+            # Preserve cover letter so downstream nodes and final result keep it
+            'cover_letter': state.get('cover_letter'),
             # Increment iteration counter
             'rewrite_iteration': state.get('rewrite_iteration', 0) + 1
         }

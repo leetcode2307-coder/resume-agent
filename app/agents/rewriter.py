@@ -1,19 +1,40 @@
 import asyncio
+import logging
+
 from app.llm import llm
 from app.graph.state import ResumeAgentState
 from app.schemas.resume import RewriterOutput
-from app.prompts import REWRITER_SYSTEM_PROMPT  # You'll need to create this
+from app.prompts import REWRITER_SYSTEM_PROMPT
+
+logger = logging.getLogger(__name__)
+
 
 class Rewriter:
-    
+
     async def rewriter_node(self, state: ResumeAgentState):
         """
         Rewrite the resume bullet points, tailor to JD keywords, draft cover letter
         """
-        
+
+        resume_text = (state.get('resume_text') or "").strip()
+        job_description = (state.get('job_description') or "").strip()
+
+        # Fail fast on unusable input instead of spending an LLM call on it --
+        # mirrors the <inputs> handling described in REWRITER_SYSTEM_PROMPT,
+        # enforced here before hitting the model.
+        if not resume_text or not job_description:
+            logger.warning(
+                "rewriter_node called with missing resume_text or job_description"
+            )
+            return {
+                'rewritten_resume': None,
+                'rewritten_bullet_points': [],
+                'cover_letter': None,
+            }
+
         # Invoking the required fields from the llm using with_structured_output
         structured_llm = llm.with_structured_output(RewriterOutput)
-        
+
         prompt = f"""
         Rewrite and improve the resume based on the job description and analysis.
 
@@ -21,14 +42,14 @@ class Rewriter:
         RESUME
         ========================
 
-        {state['resume_text']}
+        {resume_text}
 
 
         ========================
         JOB DESCRIPTION
         ========================
 
-        {state['job_description']}
+        {job_description}
 
 
         ========================
@@ -65,18 +86,26 @@ class Rewriter:
         4. Draft a compelling cover letter tailored to this specific role and company
         5. Suggest improvements to the resume structure and content
 
+        Follow the integrity rules, process, and quality bar defined in the
+        system prompt strictly -- do not invent metrics, skills, employers, or
+        experience that are not supported by the resume above.
+
         Return the result according to the required structured schema.
         """
-        
-        # Run the blocking LLM call in a thread to avoid blocking the event loop
-        result = await asyncio.to_thread(
-            structured_llm.invoke,
-            [
-                ("system", REWRITER_SYSTEM_PROMPT),
-                ("human", prompt)
-            ]
-        )
-        
+
+        try:
+            # Run the blocking LLM call in a thread to avoid blocking the event loop
+            result = await asyncio.to_thread(
+                structured_llm.invoke,
+                [
+                    ("system", REWRITER_SYSTEM_PROMPT),
+                    ("human", prompt)
+                ]
+            )
+        except Exception:
+            logger.exception("Rewriter LLM call failed")
+            raise
+
         # Return using dot notation (result is a RewriterOutput object)
         # Ensure keys match the state schema used across the workflow
         return {
@@ -84,5 +113,6 @@ class Rewriter:
             'rewritten_bullet_points': result.rewritten_bullet_points,
             'cover_letter': result.cover_letter,
         }
+
 
 rewriter = Rewriter()
