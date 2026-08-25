@@ -94,24 +94,25 @@ class Rewriter:
         """
 
         try:
-            # Run the blocking LLM call in a thread to avoid blocking the event loop
-            result = await asyncio.to_thread(
-                structured_llm.invoke,
-                [
-                    ("system", REWRITER_SYSTEM_PROMPT),
-                    ("human", prompt)
-                ]
-            )
+            result = await structured_llm.ainvoke([
+                ("system", REWRITER_SYSTEM_PROMPT),
+                ("human", prompt),
+            ])
         except Exception:
             logger.exception("Rewriter LLM call failed")
             raise
 
-        # Return using dot notation (result is a RewriterOutput object)
-        # Ensure keys match the state schema used across the workflow
+        if result is None:
+            raise ValueError("Rewriter LLM returned no structured output.")
+
+        payload = result.model_dump() if hasattr(result, "model_dump") else result
+        if not isinstance(payload, dict):
+            payload = getattr(result, "__dict__", {})
+
         return {
-            'rewritten_resume': result.rewritten_resume,
-            'rewritten_bullet_points': result.rewritten_bullet_points,
-            'cover_letter': result.cover_letter,
+            'rewritten_resume': payload.get('rewritten_resume'),
+            'rewritten_bullet_points': payload.get('rewritten_bullet_points', []),
+            'cover_letter': payload.get('cover_letter'),
         }
 
 

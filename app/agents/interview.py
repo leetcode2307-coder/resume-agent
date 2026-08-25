@@ -69,25 +69,29 @@ class InterviewPrepAgent:
         """
 
         try:
-            # Run the blocking LLM call in a thread to avoid blocking the event loop
-            result = await asyncio.to_thread(
-                structured_llm.invoke,
-                [
-                    ("system", INTERVIWER_SYSTEM_PROMPT),
-                    ("human", prompt)
-                ]
-            )
+            result = await structured_llm.ainvoke([
+                ("system", INTERVIWER_SYSTEM_PROMPT),
+                ("human", prompt),
+            ])
         except Exception:
             logger.exception("Interview prep LLM call failed")
             raise
 
+        if result is None:
+            raise ValueError("Interview prep LLM returned no structured output.")
+
+        payload = result.model_dump() if hasattr(result, "model_dump") else result
+        if not isinstance(payload, dict):
+            payload = getattr(result, "__dict__", {})
+
         return {
-            'interview_questions': result.interview_questions,
-            'technical_questions': result.technical_questions,
-            'gap_questions': result.gap_questions,
-            'preparation_tips': result.preparation_tips,
-            'key_topics_to_review': result.key_topics_to_review,
-            'expected_questions': result.expected_questions
+            'interview_questions': payload.get('interview_questions', []),
+            'behavioral_questions': payload.get('behavioral_questions', []),
+            'technical_questions': payload.get('technical_questions', []),
+            'gap_questions': payload.get('gap_questions', []),
+            'preparation_tips': payload.get('preparation_tips', []),
+            'key_topics_to_review': payload.get('key_topics_to_review', []),
+            'expected_questions': payload.get('expected_questions', [])
         }
 
 

@@ -1,4 +1,4 @@
-from typing import TypedDict, List
+from typing import List, TypedDict
 
 
 class ResumeAgentState(TypedDict):
@@ -9,18 +9,18 @@ class ResumeAgentState(TypedDict):
     job_description: str
 
     # Contact info
-    full_name: str
-    email: str
-    phone: str
-    linkedin_url: str
-    github_url: str
+    full_name: str | None
+    email: str | None
+    phone: str | None
+    linkedin_url: str | None
+    github_url: str | None
 
     # =========================
     # ANALYZER AGENT OUTPUT
     # =========================
-    role: str
-    seniority: str
-    company: str
+    role: str 
+    seniority: str | None
+    company: str | None
     tech_stack: List[str]
     matching_skills: List[str]
     missing_skills: List[str]
@@ -38,9 +38,9 @@ class ResumeAgentState(TypedDict):
     # =========================
     # REWRITER AGENT OUTPUT
     # =========================
-    rewritten_resume: str
+    rewritten_resume: str 
     rewritten_bullet_points: List[str]
-    cover_letter: str
+    cover_letter: str | None
 
     # =========================
     # CRITIC / REVIEWER OUTPUT

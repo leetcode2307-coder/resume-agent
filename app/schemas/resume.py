@@ -148,6 +148,7 @@ class InterviewerOutput(BaseModel):
 
     expected_questions: Annotated[
         List[str],
+        
         Field(
             description="High-priority questions most likely to be asked based on the job description and common interview patterns."
         )

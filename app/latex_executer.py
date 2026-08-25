@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
-#!/usr/bin/env python3
-
 from __future__ import annotations
 
+import re as _re
 from pathlib import Path
 import shutil
 import subprocess
@@ -16,6 +15,46 @@ LATEX_TIMEOUT = 60
 def _find_executable(name: str) -> str | None:
     """Find an executable available on PATH."""
     return shutil.which(name)
+
+
+def _extract_latex_errors(log: str) -> str:
+    """
+    Parse a xelatex/pdflatex log and return only the lines that describe
+    actual errors — stripping the long package-loading preamble that makes
+    the full log hard to read.
+
+    Patterns captured:
+      • Lines starting with "!" (TeX fatal errors)
+      • Lines matching "Package <name> Error: ..."
+      • Lines matching "LaTeX Error: ..."
+      • Lines matching "<file>:<line>: ..." (file-line-error format)
+      • Lines matching "Undefined control sequence" / "Missing { inserted" etc.
+      • The "l.<line> ..." context line that immediately follows an error
+    """
+    error_patterns = _re.compile(
+        r'(?:'
+        r'^!.*'                                  # ! Fatal error
+        r'|^.*?:\d+: .*'                         # file:line: error  (-file-line-error)
+        r'|^Package \S+ Error:.*'                # Package X Error:
+        r'|^LaTeX Error:.*'                      # LaTeX Error:
+        r'|^Undefined control sequence\.'         # undefined cs
+        r'|^Missing \{ inserted\.'               # brace errors
+        r'|^Missing \$ inserted\.'
+        r'|^Extra \}, or forgotten \\\$\.'
+        r'|^Too many \}'
+        r'|^Emergency stop\.'
+        r'|^l\.\d+.*'                            # l.96 ... context line
+        r')',
+        _re.MULTILINE,
+    )
+
+    matched = error_patterns.findall(log)
+    if matched:
+        return '\n'.join(line.strip() for line in matched if line.strip())
+
+    # Fallback: return the last 40 lines if nothing matched the patterns
+    lines = log.splitlines()
+    return '\n'.join(lines[-40:])
 
 
 def _run_latex(
@@ -54,13 +93,15 @@ def _run_latex(
 
     except subprocess.CalledProcessError as exc:
 
-        output = exc.stdout or ""
+        raw_log = exc.stdout or ""
+        concise = _extract_latex_errors(raw_log)
 
         raise RuntimeError(
             "LaTeX compilation failed.\n\n"
-            f"Command:\n{' '.join(command)}\n\n"
-            f"LaTeX compiler output:\n{output}"
+            f"Key errors:\n{concise}\n\n"
+            f"Full command: {' '.join(command)}"
         ) from exc
+
 
 
 def render_latex_to_pdf(
@@ -125,25 +166,39 @@ def render_latex_to_pdf(
         )
 
         # --------------------------------------------------------
-        # First compilation
+        # First & Second compilation with auto-healing retry
         # --------------------------------------------------------
 
-        first_result = _run_latex(
-            latex_engine=latex_engine,
-            tex_file=tex_file,
-            output_directory=temp_path,
-        )
+        current_latex = latex_source
+        max_attempts = 3
+        first_result = None
+        second_result = None
 
-        # --------------------------------------------------------
-        # Second compilation
-        # --------------------------------------------------------
-        # Useful for references, hyperlinks, etc.
-
-        second_result = _run_latex(
-            latex_engine=latex_engine,
-            tex_file=tex_file,
-            output_directory=temp_path,
-        )
+        for attempt in range(max_attempts):
+            tex_file.write_text(current_latex, encoding="utf-8", newline="\n")
+            try:
+                first_result = _run_latex(
+                    latex_engine=latex_engine,
+                    tex_file=tex_file,
+                    output_directory=temp_path,
+                )
+                second_result = _run_latex(
+                    latex_engine=latex_engine,
+                    tex_file=tex_file,
+                    output_directory=temp_path,
+                )
+                break
+            except RuntimeError as exc:
+                err_msg = str(exc)
+                if attempt < max_attempts - 1 and "Undefined control sequence" in err_msg:
+                    # Extract undefined macro name if present (e.g. \faLinkinelinkedin)
+                    undef_match = _re.search(r'\\([A-Za-z]+)', err_msg)
+                    if undef_match:
+                        bad_cs = f"\\{undef_match.group(1)}"
+                        # Strip or replace bad control sequence
+                        current_latex = current_latex.replace(bad_cs, "")
+                        continue
+                raise exc
 
         # --------------------------------------------------------
         # Verify PDF

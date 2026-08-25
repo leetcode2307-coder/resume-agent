@@ -73,32 +73,35 @@ class AnalyzerAgent:
         """
 
         try:
-            # Run the blocking LLM call in a thread to avoid blocking the event loop
-            result = await asyncio.to_thread(
-                structured_llm.invoke,
-                [
-                    ("system", ANALYZER_SYSTEM_PROMPT),
-                    ("human", prompt)
-                ]
-            )
+            result = await structured_llm.ainvoke([
+                ("system", ANALYZER_SYSTEM_PROMPT),
+                ("human", prompt),
+            ])
         except Exception:
             logger.exception("Analyzer LLM call failed")
             raise
 
+        if result is None:
+            raise ValueError("Analyzer LLM returned no structured output.")
+
+        payload = result.model_dump() if hasattr(result, "model_dump") else result
+        if not isinstance(payload, dict):
+            payload = getattr(result, "__dict__", {})
+
         return {
-            'role': result.role,
-            'seniority': result.seniority,
-            'tech_stack': result.tech_stack,
-            'company': result.company,
-            'matching_skills': result.matching_skills,
-            'missing_skills': result.missing_skills,
-            'nice_to_have_skills': result.nice_to_have_skills,
-            'strengths': result.strengths,
-            'weaknesses': result.weaknesses,
-            'keyword_matches': result.keyword_matches,
-            'keyword_gaps': result.keyword_gaps,
-            'ats_score': result.ats_score,
-            'initial_match_score': result.initial_match_score,
+            'role': payload.get('role'),
+            'seniority': payload.get('seniority'),
+            'tech_stack': payload.get('tech_stack', []),
+            'company': payload.get('company'),
+            'matching_skills': payload.get('matching_skills', []),
+            'missing_skills': payload.get('missing_skills', []),
+            'nice_to_have_skills': payload.get('nice_to_have_skills', []),
+            'strengths': payload.get('strengths', []),
+            'weaknesses': payload.get('weaknesses', []),
+            'keyword_matches': payload.get('keyword_matches', []),
+            'keyword_gaps': payload.get('keyword_gaps', []),
+            'ats_score': payload.get('ats_score', 0),
+            'initial_match_score': payload.get('initial_match_score', 0),
         }
 
 

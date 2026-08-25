@@ -99,24 +99,24 @@ class CriticAgent:
         Return the result according to the required structured schema.
         """
         
-        # Run the blocking LLM call in a thread to avoid blocking the event loop
-        result = await asyncio.to_thread(
-            structured_llm.invoke,
-            [
-                ("system", CRITIC_AGENT_PROMPT),
-                ("human", prompt)
-            ]
-        )
-        
-        # Return using dot notation (result is a CriticOutput object)
+        result = await structured_llm.ainvoke([
+            ("system", CRITIC_AGENT_PROMPT),
+            ("human", prompt),
+        ])
+
+        if result is None:
+            raise ValueError("Critic LLM returned no structured output.")
+
+        payload = result.model_dump() if hasattr(result, "model_dump") else result
+        if not isinstance(payload, dict):
+            payload = getattr(result, "__dict__", {})
+
         return {
-            'critic_score': result.critic_score,
-            'critic_feedback': result.critic_feedback,
-            'detected_errors': result.detected_errors,
-            'weak_phrasing': result.weak_phrasing,
-            # Preserve cover letter so downstream nodes and final result keep it
+            'critic_score': payload.get('critic_score'),
+            'critic_feedback': payload.get('critic_feedback', []),
+            'detected_errors': payload.get('detected_errors', []),
+            'weak_phrasing': payload.get('weak_phrasing', []),
             'cover_letter': state.get('cover_letter'),
-            # Increment iteration counter
             'rewrite_iteration': state.get('rewrite_iteration', 0) + 1
         }
 
