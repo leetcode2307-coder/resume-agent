@@ -7,6 +7,7 @@ from langchain_openrouter import ChatOpenRouter
 from app.config import settings
 
 import logging
+from pydantic import ValidationError
 from langchain_core.callbacks.base import BaseCallbackHandler
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,22 @@ def _build_model(model_name: str) -> ChatOpenRouter:
     )
 
 
+def _format_error(exc: Exception) -> str:
+    if isinstance(exc, ValidationError):
+        try:
+            errors = exc.errors()
+            if errors and 'input_value' in errors[0]:
+                input_val = errors[0]['input_value']
+                if isinstance(input_val, dict) and 'error' in input_val:
+                    err_msg = input_val['error'].get('message', 'Unknown')
+                    err_code = input_val['error'].get('code', 'Unknown')
+                    return f"OpenRouter API Error: {err_code} - {err_msg}"
+        except Exception:
+            pass
+        return "Response validation failed (likely unexpected API response format)."
+    return str(exc)
+
+
 class _ModelChain:
     """Attempt each configured LLM in order until one succeeds."""
 
@@ -65,7 +82,7 @@ class _ModelChain:
                     return model.invoke(messages)
                 except Exception as exc:  # pragma: no cover - fallback path
                     last_error = exc
-                    logger.warning(f"Model invoke failed: {exc}")
+                    logger.warning(f"Model invoke failed: {_format_error(exc)}")
             if attempt < 2:
                 sleep_time = 2 ** attempt
                 logger.warning(f"All models failed on attempt {attempt+1}. Retrying in {sleep_time}s...")
@@ -85,7 +102,7 @@ class _ModelChain:
                     return model.invoke(messages)
                 except Exception as exc:  # pragma: no cover - fallback path
                     last_error = exc
-                    logger.warning(f"Model ainvoke failed: {exc}")
+                    logger.warning(f"Model ainvoke failed: {_format_error(exc)}")
             if attempt < 2:
                 sleep_time = 2 ** attempt
                 logger.warning(f"All models failed on attempt {attempt+1}. Retrying in {sleep_time}s...")
@@ -109,7 +126,7 @@ class _ModelChain:
                                 return res
                         except Exception as exc:  # pragma: no cover - fallback path
                             last_error = exc
-                            logger.warning(f"Structured model invoke failed: {exc}")
+                            logger.warning(f"Structured model invoke failed: {_format_error(exc)}")
                     if attempt < 2:
                         sleep_time = 2 ** attempt
                         logger.warning(f"All structured models failed on attempt {attempt+1}. Retrying in {sleep_time}s...")
@@ -132,7 +149,7 @@ class _ModelChain:
                                 return res
                         except Exception as exc:  # pragma: no cover - fallback path
                             last_error = exc
-                            logger.warning(f"Structured model ainvoke failed: {exc}")
+                            logger.warning(f"Structured model ainvoke failed: {_format_error(exc)}")
                     if attempt < 2:
                         sleep_time = 2 ** attempt
                         logger.warning(f"All structured models failed on attempt {attempt+1}. Retrying in {sleep_time}s...")

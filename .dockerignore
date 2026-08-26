@@ -1,0 +1,76 @@
+# ── Python ──────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# ── Virtual environments ─────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Tests & QA ───────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+test_*.py
+*_test.py
+
+# ── Environment / secrets ────────────────────────────────────
+.env
+.env.*
+*.env
+secrets/
+*.key
+*.pem
+*.crt
+openrouter_key.txt
+api_key.txt
+*.api.key
+
+# ── Version control ──────────────────────────────────────────
+.git/
+.gitignore
+
+# ── IDE / editor ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+.DS_Store
+
+# ── Logs & temp ──────────────────────────────────────────────
+*.log
+logs/
+texput.log
+tmp/
+temp/
+*.tmp
+*.temp
+
+# ── Build artifacts / generated output ───────────────────────
+generated_pdfs/
+output/
+results/
+data/
+.rag_cache/
+
+# ── Flutter frontend (not part of the backend image) ─────────
+frontend/
+
+# ── Documentation / design ───────────────────────────────────
+README.md
+*.excalidraw
+demo.excalidraw
+
+# ── Misc project files ────────────────────────────────────────
+patch.py
+main.py           # root-level old Streamlit file (all-commented-out)
+pyproject.toml    # only needed for uv install, already done in builder
+uv.lock           # same
+.python-version
