@@ -7,12 +7,15 @@ FROM python:3.12-slim AS builder
 # Install uv (fast Python package installer)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-WORKDIR /build
+# IMPORTANT: use /app as WORKDIR so the venv is created at /app/.venv.
+# The runtime stage also uses /app, so all shebang paths (e.g. uvicorn)
+# will point to /app/.venv/bin/python and remain valid after the COPY.
+WORKDIR /app
 
 # Copy dependency files first (layer cache)
 COPY pyproject.toml uv.lock ./
 
-# Install all dependencies into a virtual environment
+# Install all dependencies into /app/.venv
 RUN uv sync --frozen --no-dev --no-install-project
 
 # ============================================================
@@ -43,7 +46,7 @@ RUN groupadd --gid 1001 appgroup && \
 WORKDIR /app
 
 # Copy the virtual environment from the builder stage
-COPY --from=builder /build/.venv /app/.venv
+COPY --from=builder /app/.venv /app/.venv
 
 # Copy application source code
 COPY app/ ./app/
