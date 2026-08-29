@@ -57,6 +57,87 @@ def _extract_latex_errors(log: str) -> str:
     return '\n'.join(lines[-40:])
 
 
+def _parse_detailed_error(log: str, tex_file: Path) -> str:
+    """
+    Extracts detailed error information including source context.
+    """
+    lines = log.splitlines()
+    error_line = None
+    error_msg = ""
+    
+    # Try to find file-line-error
+    for line in lines:
+        if ".tex:" in line and "Error" not in error_msg:
+            match = _re.search(r'\.tex:(\d+):\s*(.*)', line)
+            if match:
+                error_line = int(match.group(1))
+                error_msg = match.group(2)
+                break
+        elif line.startswith("!"):
+            error_msg = line
+            # Often the next lines have l.<number>
+            
+    if not error_line:
+        for line in lines:
+            match = _re.search(r'^l\.(\d+)', line)
+            if match:
+                error_line = int(match.group(1))
+                if not error_msg:
+                    error_msg = line
+                break
+
+    if not error_msg:
+        # Fallback to concise errors
+        return _extract_latex_errors(log)
+
+    # Read context from tex_file
+    context_str = ""
+    source_line_str = ""
+    if error_line and tex_file.exists():
+        try:
+            with open(tex_file, 'r', encoding='utf-8') as f:
+                tex_lines = f.readlines()
+            
+            start_idx = max(0, error_line - 3)
+            end_idx = min(len(tex_lines), error_line + 2)
+            
+            context_lines = []
+            for i in range(start_idx, end_idx):
+                prefix = "-> " if i + 1 == error_line else "   "
+                line_content = tex_lines[i].rstrip('\n')
+                context_lines.append(f"{prefix}{i+1:3d} | {line_content}")
+                if i + 1 == error_line:
+                    source_line_str = line_content
+                    
+            context_str = "\n" + "\n".join(context_lines)
+        except Exception:
+            context_str = "\n[Could not read source file for context]"
+            
+    # Try to provide a human-readable explanation
+    explanation = "Check for unescaped special characters (e.g., &, %, $, #, _) or malformed LaTeX commands."
+    if "Misplaced alignment tab character" in error_msg:
+        explanation = "Unescaped '&' found. '&' is used for alignment in tables. Literal ampersands must be written as '\\&'."
+    elif "Undefined control sequence" in error_msg:
+        explanation = "A LaTeX command was misspelled or is missing a required package."
+    elif "Missing $ inserted" in error_msg or "Missing { inserted" in error_msg:
+        explanation = "Unescaped special character (like '_' or '^') which LaTeX thinks starts math mode, or unmatched braces."
+        
+    report = [
+        "LaTeX compilation failed.",
+        "",
+        f"File: {tex_file.name}",
+        f"Line: {error_line if error_line else 'Unknown'}",
+        f"Error: {error_msg.strip('! ')}",
+        "",
+        "Source Context:" + (context_str if context_str else " None available"),
+        "",
+        "Possible cause / Suggested correction:",
+        explanation
+    ]
+    
+    return "\n".join(report)
+
+
 def _run_latex(
     latex_engine: str,
     tex_file: Path,
@@ -92,13 +173,11 @@ def _run_latex(
         ) from exc
 
     except subprocess.CalledProcessError as exc:
-
         raw_log = exc.stdout or ""
-        concise = _extract_latex_errors(raw_log)
+        concise = _parse_detailed_error(raw_log, tex_file)
 
         raise RuntimeError(
-            "LaTeX compilation failed.\n\n"
-            f"Key errors:\n{concise}\n\n"
+            f"{concise}\n\n"
             f"Full command: {' '.join(command)}"
         ) from exc
 
