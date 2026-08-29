@@ -276,7 +276,11 @@ CRITICAL RULES (non-negotiable):
 3. Do NOT claim any of the following missing or nice-to-have skills as the candidate's own experience: {missing_skills + nice_to_have_skills}
 4. Produce a clean, ATS-friendly, one-page professional LaTeX resume.
 5. Use modern but conservative formatting (geometry, enumitem, hyperref, fontawesome5, xcolor, parskip).
-   DO NOT use titlesec — it is broken on TeX Live 2022. Use \@startsection for section headings.
+   DO NOT use titlesec — it is broken on TeX Live 2022. Use \\@startsection for section headings.
+6. Escape LaTeX special characters (e.g., &, %, $, #, _, ~, ^) ONLY in dynamic text content (like company names or metrics). Do NOT escape characters that are part of LaTeX commands.
+7. Return ONLY valid raw LaTeX code. Do NOT wrap your response in Markdown or ```latex code fences.
+8. Only use packages and commands explicitly supported by the existing template. Do NOT invent custom macros or add unsupported packages.
+9. Keep all LaTeX environments (e.g., \\begin{{itemize}} and \\end{{itemize}}) and braces {{}} perfectly balanced.
 
 CONTACT INFORMATION (strict):
 {contact_block}
@@ -332,13 +336,12 @@ Requirements:
 
     # Return clean LaTeX (strip any accidental markdown fences)
     latex_code = response.content.strip()
-    if latex_code.startswith("```"):
-        lines = latex_code.splitlines()
-        if lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        latex_code = "\n".join(lines).strip()
+    match = re.search(r'```(?:latex|tex)?\s*(.*?)\s*```', latex_code, flags=re.DOTALL | re.IGNORECASE)
+    if match:
+        latex_code = match.group(1).strip()
+    else:
+        latex_code = re.sub(r'^```(?:latex|tex)?\s*', '', latex_code, flags=re.IGNORECASE)
+        latex_code = re.sub(r'\s*```$', '', latex_code)
 
     latex_code = _sanitize_latex(latex_code)
     latex_code = _fix_titlesec_compat(latex_code)
@@ -346,3 +349,61 @@ Requirements:
     latex_code = _fix_enumitem_compat(latex_code)
 
     return latex_code
+
+def validate_latex(latex_code: str) -> None:
+    """Validate LaTeX structure to catch obvious errors before compilation."""
+    if r"\documentclass" not in latex_code:
+        raise ValueError("Missing \\documentclass")
+    if r"\begin{document}" not in latex_code:
+        raise ValueError("Missing \\begin{document}")
+    if r"\end{document}" not in latex_code:
+        raise ValueError("Missing \\end{document}")
+    
+    # Check braces
+    if latex_code.count('{') != latex_code.count('}'):
+        raise ValueError("Unbalanced braces {} detected")
+    
+    # Check environments
+    env_stack = []
+    for match in re.finditer(r'\\(begin|end)\{([^}]+)\}', latex_code):
+        type_ = match.group(1)
+        env = match.group(2)
+        if type_ == 'begin':
+            env_stack.append(env)
+        elif type_ == 'end':
+            if not env_stack:
+                raise ValueError(f"Unmatched \\end{{{env}}}")
+            top = env_stack.pop()
+            if top != env:
+                raise ValueError(f"Environment mismatch: \\begin{{{top}}} closed by \\end{{{env}}}")
+    if env_stack:
+        raise ValueError(f"Unclosed environments: {', '.join(env_stack)}")
+
+def fix_latex(latex_code: str, error_msg: str) -> str:
+    """Ask the LLM to fix a specific LaTeX compilation error."""
+    prompt = f"""
+Fix ONLY the LaTeX compilation error identified by the compiler below. 
+Preserve the existing resume content, structure, formatting, and template.
+Return ONLY the corrected raw LaTeX source. Do not return Markdown or explanations.
+
+Relevant compiler output / Error:
+{error_msg[:1000]}
+
+Original LaTeX:
+{latex_code}
+"""
+    messages = [
+        {"role": "system", "content": "You are an expert LaTeX developer."},
+        {"role": "user", "content": prompt}
+    ]
+    response = llm.invoke(messages)
+    
+    fixed_code = response.content.strip()
+    match = re.search(r'```(?:latex|tex)?\s*(.*?)\s*```', fixed_code, flags=re.DOTALL | re.IGNORECASE)
+    if match:
+        fixed_code = match.group(1).strip()
+    else:
+        fixed_code = re.sub(r'^```(?:latex|tex)?\s*', '', fixed_code, flags=re.IGNORECASE)
+        fixed_code = re.sub(r'\s*```$', '', fixed_code)
+        
+    return fixed_code

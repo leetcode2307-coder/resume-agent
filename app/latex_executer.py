@@ -166,46 +166,22 @@ def render_latex_to_pdf(
         )
 
         # --------------------------------------------------------
-        # First & Second compilation with auto-healing retry
+        # Compilation
         # --------------------------------------------------------
 
-        current_latex = latex_source
-        max_attempts = 3
-        first_result = None
-        second_result = None
-
-        for attempt in range(max_attempts):
-            tex_file.write_text(current_latex, encoding="utf-8", newline="\n")
-            try:
-                first_result = _run_latex(
-                    latex_engine=latex_engine,
-                    tex_file=tex_file,
-                    output_directory=temp_path,
-                )
-                second_result = _run_latex(
-                    latex_engine=latex_engine,
-                    tex_file=tex_file,
-                    output_directory=temp_path,
-                )
-                break
-            except RuntimeError as exc:
-                err_msg = str(exc)
-                if attempt < max_attempts - 1 and "Undefined control sequence" in err_msg:
-                    # Extract undefined macro name if present (e.g. \faLinkinelinkedin)
-                    undef_match = _re.search(r'\\([A-Za-z]+)', err_msg)
-                    if undef_match:
-                        bad_cs = f"\\{undef_match.group(1)}"
-                        # Strip or replace bad control sequence
-                        current_latex = current_latex.replace(bad_cs, "")
-                        continue
-                raise exc
+        result = _run_latex(
+            latex_engine=latex_engine,
+            tex_file=tex_file,
+            output_directory=temp_path,
+        )
 
         # --------------------------------------------------------
         # Verify PDF
         # --------------------------------------------------------
 
         if not generated_pdf.exists():
-            output = second_result.stdout or first_result.stdout
+            output = result.stdout
+
 
             raise RuntimeError(
                 "LaTeX compilation completed but no PDF was generated.\n\n"

@@ -171,14 +171,30 @@ async def workflow_result(request: WorkflowRequest):
             pdf_path = None
             latex_code = ""
             try:
-                latex_code = resume_builder(state=final_state)
-                pdf_path = await asyncio.to_thread(
-                    render_latex_to_pdf,
-                    latex_source=latex_code,
-                    output_pdf=output_path,
-                )
+                latex_code = await asyncio.to_thread(resume_builder, final_state)
+                
+                max_retries = 3
+                from app.resume_builder_tool import validate_latex, fix_latex
+                
+                for attempt in range(max_retries):
+                    try:
+                        validate_latex(latex_code)
+                        pdf_path = await asyncio.to_thread(
+                            render_latex_to_pdf,
+                            latex_source=latex_code,
+                            output_pdf=output_path,
+                        )
+                        break
+                    except Exception as exc:
+                        if attempt == max_retries - 1:
+                            raise RuntimeError(f"LaTeX compilation failed after {max_retries} attempts. Last error: {exc}") from exc
+                        
+                        logger.info(f"LaTeX rendering failed on attempt {attempt + 1}, asking LLM to fix...")
+                        latex_code = await asyncio.to_thread(fix_latex, latex_code, str(exc))
+
             except Exception as exc:
-                logger.warning(f"LaTeX rendering failed ({exc}). Returning LaTeX source code for manual compilation.")
+                logger.error(f"Failed to generate PDF: {exc}")
+                raise
 
             final_response = {
                 "event": "workflow_completed",
