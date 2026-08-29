@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -174,7 +175,7 @@ class ApiService {
     if (Platform.isAndroid) {
       // On Android 9 (API 28) and below, WRITE_EXTERNAL_STORAGE is required
       // to write files outside the app sandbox. Android 10+ scoped storage
-      // lets us write to our own external directory without a permission.
+      // lets us write to MediaStore without a permission.
       final sdkInt = await _getAndroidSdkVersion();
       if (sdkInt > 0 && sdkInt <= 28) {
         final status = await Permission.storage.request();
@@ -192,28 +193,16 @@ class ApiService {
         throw Exception('Failed to download PDF: HTTP ${response.statusCode}');
       }
 
-      // Try to land in the visible Downloads folder first. On Android 10+
-      // getDownloadsDirectory() returns the public Downloads folder which
-      // users can browse in the Files app.
-      Directory? dir;
+      const platform = MethodChannel('com.resumeagent.frontend/downloads');
       try {
-        dir = await getDownloadsDirectory();
-      } catch (_) {
-        dir = null;
+        final String savedPath = await platform.invokeMethod('savePdfToDownloads', {
+          'bytes': response.bodyBytes,
+          'filename': filename,
+        });
+        return savedPath;
+      } on PlatformException catch (e) {
+        throw Exception('Failed to save PDF on Android: ${e.message}');
       }
-      // Fallback: app-specific external storage (visible in Files but inside
-      // Android/data/... – still accessible to the user on most devices).
-      dir ??= await getExternalStorageDirectory();
-      // Last resort: app-internal documents directory.
-      dir ??= await getApplicationDocumentsDirectory();
-
-      if (!await dir.exists()) {
-        await dir.create(recursive: true);
-      }
-
-      final file = File('${dir.path}/$filename');
-      await file.writeAsBytes(response.bodyBytes);
-      return file.path;
     }
 
     // ── iOS ─────────────────────────────────────────────────────────────────
