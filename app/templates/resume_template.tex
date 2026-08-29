@@ -1,0 +1,150 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[margin=0.65in]{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{parskip}
+
+% Colors
+\definecolor{primary}{HTML}{000000}
+\definecolor{accent}{HTML}{2C3E50}
+
+\hypersetup{
+    colorlinks=true,
+    urlcolor=accent,
+    linkcolor=primary,
+}
+
+% Section formatting — titlesec-free, TeX Live 2022 compatible
+\makeatletter
+\renewcommand{\section}{\@startsection{section}{1}{\z@}
+  {-1.5ex \@plus -0.5ex \@minus -0.2ex}
+  {0.8ex \@plus 0.2ex}
+  {\normalfont\large\bfseries\color{accent}}}
+\makeatother
+
+\setlist[itemize]{leftmargin=*, topsep=2pt, itemsep=0pt, label=\textbullet}
+\pagestyle{empty}
+\raggedbottom
+
+\begin{document}
+
+\begin{center}
+    {\LARGE \bfseries \color{primary} \VAR{full_name}}\\[4pt]
+    \VAR{contact_line}
+\end{center}
+
+\vspace{4pt}
+
+\BLOCK{ if summary }
+\section*{SUMMARY}
+\vspace{-2pt}
+\rule{\textwidth}{0.4pt}
+\vspace{4pt}
+\noindent
+\VAR{summary}
+\vspace{4pt}
+\BLOCK{ endif }
+
+\BLOCK{ if experience }
+\section*{EXPERIENCE}
+\vspace{-2pt}
+\rule{\textwidth}{0.4pt}
+\vspace{4pt}
+
+\BLOCK{ for exp in experience }
+\noindent \textbf{\VAR{exp.role}} \hfill \textit{\BLOCK{ if exp.start_date }\VAR{exp.start_date} -- \BLOCK{ endif }\VAR{exp.end_date}}\\
+\noindent \textit{\VAR{exp.company}}\BLOCK{ if exp.location }, \VAR{exp.location}\BLOCK{ endif }
+\BLOCK{ if exp.bullets }
+\begin{itemize}
+\BLOCK{ for bullet in exp.bullets }
+    \item \VAR{bullet}
+\BLOCK{ endfor }
+\end{itemize}
+\BLOCK{ endif }
+\vspace{4pt}
+\BLOCK{ endfor }
+\BLOCK{ endif }
+
+\BLOCK{ if projects }
+\section*{PROJECTS}
+\vspace{-2pt}
+\rule{\textwidth}{0.4pt}
+\vspace{4pt}
+
+\BLOCK{ for proj in projects }
+\noindent \textbf{\VAR{proj.name}} \hfill \textit{\VAR{proj.technologies|join(', ')}}\\
+\BLOCK{ if proj.description }
+\noindent \VAR{proj.description}
+\BLOCK{ endif }
+\BLOCK{ if proj.bullets }
+\begin{itemize}
+\BLOCK{ for bullet in proj.bullets }
+    \item \VAR{bullet}
+\BLOCK{ endfor }
+\end{itemize}
+\BLOCK{ endif }
+\vspace{4pt}
+\BLOCK{ endfor }
+\BLOCK{ endif }
+
+\BLOCK{ if education }
+\section*{EDUCATION}
+\vspace{-2pt}
+\rule{\textwidth}{0.4pt}
+\vspace{4pt}
+
+\BLOCK{ for edu in education }
+\noindent \textbf{\VAR{edu.degree}} \hfill \textit{\BLOCK{ if edu.start_date }\VAR{edu.start_date} -- \BLOCK{ endif }\VAR{edu.end_date}}\\
+\noindent \textit{\VAR{edu.institution}}\BLOCK{ if edu.location }, \VAR{edu.location}\BLOCK{ endif }
+\BLOCK{ if edu.details }
+\begin{itemize}
+\BLOCK{ for detail in edu.details }
+    \item \VAR{detail}
+\BLOCK{ endfor }
+\end{itemize}
+\BLOCK{ endif }
+\vspace{4pt}
+\BLOCK{ endfor }
+\BLOCK{ endif }
+
+\BLOCK{ if skills }
+\section*{SKILLS}
+\vspace{-2pt}
+\rule{\textwidth}{0.4pt}
+\vspace{4pt}
+\begin{itemize}
+\BLOCK{ for category, skill_list in skills.items() }
+    \item \textbf{\VAR{category}}: \VAR{skill_list|join(', ')}
+\BLOCK{ endfor }
+\end{itemize}
+\vspace{4pt}
+\BLOCK{ endif }
+
+\BLOCK{ if certifications }
+\section*{CERTIFICATIONS}
+\vspace{-2pt}
+\rule{\textwidth}{0.4pt}
+\vspace{4pt}
+\begin{itemize}
+\BLOCK{ for cert in certifications }
+    \item \VAR{cert}
+\BLOCK{ endfor }
+\end{itemize}
+\vspace{4pt}
+\BLOCK{ endif }
+
+\BLOCK{ if achievements }
+\section*{ACHIEVEMENTS}
+\vspace{-2pt}
+\rule{\textwidth}{0.4pt}
+\vspace{4pt}
+\begin{itemize}
+\BLOCK{ for ach in achievements }
+    \item \VAR{ach}
+\BLOCK{ endfor }
+\end{itemize}
+\BLOCK{ endif }
+
+\end{document}

@@ -41,6 +41,7 @@ class ResumeAgentState(TypedDict):
     rewritten_resume: str 
     rewritten_bullet_points: List[str]
     cover_letter: str | None
+    structured_resume: dict | None  # dict representation of StructuredResume
 
     # =========================
     # CRITIC / REVIEWER OUTPUT

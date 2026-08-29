@@ -113,6 +113,7 @@ class Rewriter:
             'rewritten_resume': payload.get('rewritten_resume'),
             'rewritten_bullet_points': payload.get('rewritten_bullet_points', []),
             'cover_letter': payload.get('cover_letter'),
+            'structured_resume': payload.get('structured_resume')
         }
 
 

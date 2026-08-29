@@ -155,6 +155,37 @@ class InterviewerOutput(BaseModel):
     ]
 
 
+class ResumeExperience(BaseModel):
+    company: str
+    role: str
+    location: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    bullets: List[str]
+
+class ResumeEducation(BaseModel):
+    institution: str
+    degree: str
+    location: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    details: List[str]
+
+class ResumeProject(BaseModel):
+    name: str
+    technologies: List[str]
+    description: str
+    bullets: List[str]
+
+class StructuredResume(BaseModel):
+    summary: str | None = None
+    experience: List[ResumeExperience] = []
+    education: List[ResumeEducation] = []
+    projects: List[ResumeProject] = []
+    skills: dict[str, List[str]] = {}
+    certifications: List[str] = []
+    achievements: List[str] = []
+
 class RewriterOutput(BaseModel):
     """Output model for the rewriter agent."""
 
@@ -174,6 +205,13 @@ class RewriterOutput(BaseModel):
         str|None,
         Field(
             description="Generated cover letter tailored to the target job."
+        )
+    ]
+
+    structured_resume: Annotated[
+        StructuredResume | None,
+        Field(
+            description="The fully structured content of the rewritten resume."
         )
     ]
 
