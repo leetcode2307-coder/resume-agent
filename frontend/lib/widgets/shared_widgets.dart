@@ -390,6 +390,7 @@ class PipelineStep extends StatelessWidget {
   final bool completed;
   final bool active;
   final bool isLast;
+  final double? fixedLineWidth;
 
   const PipelineStep({
     super.key,
@@ -399,6 +400,7 @@ class PipelineStep extends StatelessWidget {
     required this.completed,
     required this.active,
     this.isLast = false,
+    this.fixedLineWidth,
   });
 
   @override
@@ -458,21 +460,35 @@ class PipelineStep extends StatelessWidget {
           ],
         ),
         if (!isLast)
-          Flexible(
-            child: Container(
-              height: 1.5,
-              constraints: const BoxConstraints(minWidth: 12, maxWidth: 120),
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    completed ? color : AppTheme.border,
-                    AppTheme.border,
-                  ],
+          fixedLineWidth != null
+              ? Container(
+                  height: 1.5,
+                  width: fixedLineWidth,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        completed ? color : AppTheme.border,
+                        AppTheme.border,
+                      ],
+                    ),
+                  ),
+                )
+              : Flexible(
+                  child: Container(
+                    height: 1.5,
+                    constraints: const BoxConstraints(minWidth: 12, maxWidth: 120),
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          completed ? color : AppTheme.border,
+                          AppTheme.border,
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
       ],
     );
   }

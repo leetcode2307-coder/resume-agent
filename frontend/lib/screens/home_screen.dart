@@ -206,22 +206,6 @@ class _HomeScreenState extends State<HomeScreen> {
         titlePadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                // Removed 'const'
-                gradient: const LinearGradient(
-                  colors: [AppTheme.accentBlue, AppTheme.accentPurple],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.auto_awesome_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 12),
             Flexible(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,44 +343,60 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: PipelineStep(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isMobile = constraints.maxWidth < 600;
+              final steps = [
+                PipelineStep(
                   label: 'Analyzer',
                   icon: Icons.manage_search_rounded,
                   color: AppTheme.accentBlue,
                   completed: isCompleted('analyzer'),
                   active: isActive('analyzer') || (running && agents.isEmpty),
+                  fixedLineWidth: isMobile ? 30 : null,
                 ),
-              ),
-              Expanded(
-                child: PipelineStep(
+                PipelineStep(
                   label: 'Rewriter',
                   icon: Icons.edit_note_rounded,
                   color: AppTheme.accentPurple,
                   completed: isCompleted('rewriter'),
                   active: isActive('rewriter'),
+                  fixedLineWidth: isMobile ? 30 : null,
                 ),
-              ),
-              Expanded(
-                child: PipelineStep(
+                PipelineStep(
                   label: 'Critique',
                   icon: Icons.rate_review_rounded,
                   color: AppTheme.accentAmber,
                   completed: isCompleted('critic'),
                   active: isActive('critic'),
+                  fixedLineWidth: isMobile ? 30 : null,
                 ),
-              ),
-              PipelineStep(
-                label: 'Interview',
-                icon: Icons.record_voice_over_rounded,
-                color: AppTheme.accentGreen,
-                completed: isCompleted('interview_prep'),
-                active: isActive('interview_prep'),
-                isLast: true,
-              ),
-            ],
+                PipelineStep(
+                  label: 'Interview',
+                  icon: Icons.record_voice_over_rounded,
+                  color: AppTheme.accentGreen,
+                  completed: isCompleted('interview_prep'),
+                  active: isActive('interview_prep'),
+                  isLast: true,
+                ),
+              ];
+
+              if (isMobile) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(children: steps),
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: steps[0]),
+                  Expanded(child: steps[1]),
+                  Expanded(child: steps[2]),
+                  steps[3],
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -510,53 +510,36 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildField(
-                            controller: _nameCtrl,
-                            label: 'Full Name',
-                            icon: Icons.person_outline_rounded,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildField(
-                            controller: _emailCtrl,
-                            label: 'Email',
-                            icon: Icons.email_outlined,
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildResponsiveRow([
+                      _buildField(
+                        controller: _nameCtrl,
+                        label: 'Full Name',
+                        icon: Icons.person_outline_rounded,
+                      ),
+                      _buildField(
+                        controller: _emailCtrl,
+                        label: 'Email',
+                        icon: Icons.email_outlined,
+                      ),
+                    ]),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildField(
-                            controller: _phoneCtrl,
-                            label: 'Phone',
-                            icon: Icons.phone_outlined,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildField(
-                            controller: _linkedinCtrl,
-                            label: 'LinkedIn URL',
-                            icon: Icons.link_rounded,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildField(
-                            controller: _githubCtrl,
-                            label: 'GitHub URL',
-                            icon: Icons.code_rounded,
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildResponsiveRow([
+                      _buildField(
+                        controller: _phoneCtrl,
+                        label: 'Phone',
+                        icon: Icons.phone_outlined,
+                      ),
+                      _buildField(
+                        controller: _linkedinCtrl,
+                        label: 'LinkedIn URL',
+                        icon: Icons.link_rounded,
+                      ),
+                      _buildField(
+                        controller: _githubCtrl,
+                        label: 'GitHub URL',
+                        icon: Icons.code_rounded,
+                      ),
+                    ]),
                     const SizedBox(height: 24),
 
                     // Submit button
@@ -696,6 +679,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+  Widget _buildResponsiveRow(List<Widget> children) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 600) {
+          final List<Widget> spacedChildren = [];
+          for (int i = 0; i < children.length; i++) {
+            spacedChildren.add(children[i]);
+            if (i < children.length - 1) {
+              spacedChildren.add(const SizedBox(height: 12));
+            }
+          }
+          return Column(children: spacedChildren);
+        }
+
+        final List<Widget> rowChildren = [];
+        for (int i = 0; i < children.length; i++) {
+          rowChildren.add(Expanded(child: children[i]));
+          if (i < children.length - 1) {
+            rowChildren.add(const SizedBox(width: 12));
+          }
+        }
+        return Row(children: rowChildren);
+      },
+    );
+  }
 
   Widget _buildTextArea({
     required TextEditingController controller,
