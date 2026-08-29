@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
+from functools import lru_cache
 
 class Settings(BaseSettings):
     openrouter_api_key: str = ""
@@ -14,6 +14,9 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
     )
 
+@lru_cache()
+def get_setting()->Settings:
+    return Settings()
 
-settings = Settings()
+settings = get_setting()
     
