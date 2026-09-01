@@ -15,6 +15,11 @@ from app.graph.workflow import workflow_result_async
 from app.latex_executer import render_latex_to_pdf
 from app.resume_builder_tool import resume_builder
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
 logger = logging.getLogger(__name__)
 
 app = FastAPI()

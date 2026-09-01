@@ -9,6 +9,12 @@ class Settings(BaseSettings):
     glm_model: str = "z-ai/glm-5.2:free"
     nemotron_model: str = "nvidia/nemotron-3.5-lightning:free"
 
+    langsmith_tracing: bool = False
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
+    langsmith_api_key: str
+    langsmith_project: str = "resume-agent"
+
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
