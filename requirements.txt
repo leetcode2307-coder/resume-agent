@@ -1,4 +1,5 @@
 python-dotenv
+e2b>=1.0.0
 
 pydantic
 pydantic-settings

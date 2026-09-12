@@ -188,65 +188,65 @@ def render_latex_to_pdf(
     output_pdf: str | Path,
 ) -> Path:
     """
-    Compile LaTeX source into a PDF.
-
-    Args:
-        latex_source: Complete LaTeX document.
-        output_pdf: Destination PDF path.
-
-    Returns:
-        Path to generated PDF.
+    Compile LaTeX source into a PDF using E2B, falling back to local execution.
     """
-
     if not latex_source or not latex_source.strip():
         raise ValueError("LaTeX source cannot be empty.")
 
     output_pdf = Path(output_pdf).expanduser().resolve()
+    
+    try:
+        from app.config import settings
+        import e2b
+        
+        if settings.e2b_api_key:
+            # We attempt E2B first
+            # The user must build a custom template named 'latex-resume-env' via E2B CLI.
+            # E2B Sandbox automatically loads the API key from E2B_API_KEY env if not explicitly passed,
+            # but we pass it just to be safe.
+            with e2b.Sandbox(template="latex-resume-env", api_key=settings.e2b_api_key) as sandbox:
+                sandbox.files.write("/home/user/document.tex", latex_source)
+                
+                process = sandbox.process.start_and_wait(
+                    "xelatex -interaction=nonstopmode -halt-on-error /home/user/document.tex",
+                    cwd="/home/user",
+                    timeout=LATEX_TIMEOUT
+                )
+                
+                if process.exit_code != 0:
+                    raw_log = process.stdout + "\n" + process.stderr
+                    # Try to parse concise error for nicer UI
+                    tex_path = Path("/home/user/document.tex") # dummy path for parser
+                    concise = _parse_detailed_error(raw_log, tex_path)
+                    raise RuntimeError(f"E2B LaTeX compilation failed:\n{concise}")
+                
+                pdf_bytes = sandbox.files.read_bytes("/home/user/document.pdf")
+                
+                output_pdf.parent.mkdir(parents=True, exist_ok=True)
+                with open(output_pdf, "wb") as f:
+                    f.write(pdf_bytes)
+                    
+            return output_pdf
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"E2B compilation failed or is unconfigured: {e}. Falling back to local execution.")
 
     # ------------------------------------------------------------
-    # Find the LaTeX engine
+    # Fallback to local LaTeX execution
     # ------------------------------------------------------------
-    # xelatex is used instead of pdflatex because generated resumes may
-    # include packages like fontspec (custom font handling), which only
-    # work under XeTeX or LuaTeX. xelatex also supports everything
-    # pdflatex supports here (geometry, hyperref, fontawesome5, etc.),
-    # so this is a safe drop-in replacement.
-
     latex_engine = _find_executable("xelatex")
-
     if latex_engine is None:
         raise RuntimeError(
-            "xelatex was not found on PATH.\n\n"
-            "Install TeX Live using:\n"
-            "sudo apt install texlive-xetex texlive-latex-extra"
+            "E2B compilation failed and local xelatex was not found on PATH.\n\n"
+            "Install TeX Live locally or configure E2B properly."
         )
 
-    # ------------------------------------------------------------
-    # Temporary compilation directory
-    # ------------------------------------------------------------
-
-    with tempfile.TemporaryDirectory(
-        prefix="resume_latex_"
-    ) as temp_dir:
-
+    with tempfile.TemporaryDirectory(prefix="resume_latex_") as temp_dir:
         temp_path = Path(temp_dir)
-
         tex_file = temp_path / "document.tex"
         generated_pdf = temp_path / "document.pdf"
 
-        # --------------------------------------------------------
-        # Write .tex file
-        # --------------------------------------------------------
-
-        tex_file.write_text(
-            latex_source,
-            encoding="utf-8",
-            newline="\n",
-        )
-
-        # --------------------------------------------------------
-        # Compilation
-        # --------------------------------------------------------
+        tex_file.write_text(latex_source, encoding="utf-8", newline="\n")
 
         result = _run_latex(
             latex_engine=latex_engine,
@@ -254,41 +254,17 @@ def render_latex_to_pdf(
             output_directory=temp_path,
         )
 
-        # --------------------------------------------------------
-        # Verify PDF
-        # --------------------------------------------------------
-
         if not generated_pdf.exists():
-            output = result.stdout
-
-
             raise RuntimeError(
                 "LaTeX compilation completed but no PDF was generated.\n\n"
-                f"Compiler output:\n{output}"
+                f"Compiler output:\n{result.stdout}"
             )
 
         if generated_pdf.stat().st_size == 0:
-            raise RuntimeError(
-                "LaTeX compilation generated an empty PDF."
-            )
+            raise RuntimeError("LaTeX compilation generated an empty PDF.")
 
-        # --------------------------------------------------------
-        # Create output directory
-        # --------------------------------------------------------
-
-        output_pdf.parent.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
-        # --------------------------------------------------------
-        # Copy PDF
-        # --------------------------------------------------------
-
-        shutil.copy2(
-            generated_pdf,
-            output_pdf,
-        )
+        output_pdf.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(generated_pdf, output_pdf)
 
     return output_pdf
 

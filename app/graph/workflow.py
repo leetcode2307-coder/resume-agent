@@ -20,19 +20,21 @@ def input_node(state: ResumeAgentState):
     }
 
 
-def should_rewrite(state: ResumeAgentState) -> str:
+def should_rewrite(state: ResumeAgentState) -> list[str]:
     """Decide whether the resume should prepare for filtering or rewriting."""
+    # Always run interview prep in parallel
+    next_nodes = ["interview_agent"]
     if state.get("initial_match_score", 0) < 80:
-        return "rewriter_node"
-    return "interview_agent"
+        next_nodes.append("rewriter_node")
+    return next_nodes
 
 
 def should_continue_rewriting(state: ResumeAgentState) -> str:
-    """Check whether the resume should keep rewriting or move to interview prep."""
+    """Check whether the resume should keep rewriting or move to END."""
     if state.get("rewrite_iteration", 0) >= state.get("max_rewrite_iterations", 0):
-        return "interview_agent"
+        return END
     if state.get("critic_score") is not None and state.get("critic_score", 0) >= state.get("quality_threshold", 0):
-        return "interview_agent"
+        return END
     return "rewriter_node"
 
 
@@ -51,10 +53,7 @@ def _build_workflow():
     graph.add_conditional_edges(
         "analyzer_node",
         should_rewrite,
-        {
-            "rewriter_node": "rewriter_node",
-            "interview_agent": "interview_agent",
-        },
+        ["rewriter_node", "interview_agent"],
     )
 
     graph.add_edge("rewriter_node", "critic_agent")
@@ -62,10 +61,7 @@ def _build_workflow():
     graph.add_conditional_edges(
         "critic_agent",
         should_continue_rewriting,
-        {
-            "rewriter_node": "rewriter_node",
-            "interview_agent": "interview_agent",
-        },
+        {"rewriter_node": "rewriter_node", END: END},
     )
 
     graph.add_edge("interview_agent", END)

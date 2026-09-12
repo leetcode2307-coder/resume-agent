@@ -69,3 +69,18 @@ docker-compose.override.yml
 # Don't commit lock files for libraries that don't use them
 # (keep this uncommented if using pip with requirements.txt)
 # requirements.txt.lock
+# Generated Output
+generated_pdfs/
+*.pdf
+
+# LaTeX Build Artifacts
+*.aux
+*.out
+*.log
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+
+# macOS
+.DS_Store

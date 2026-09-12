@@ -80,9 +80,10 @@ async def health():
 
 @app.get("/download-pdf/{filename}")
 async def download_pdf(filename: str):
+    # For production, this should fetch from S3 / GCS
+    # e.g., return RedirectResponse(boto3.client('s3').generate_presigned_url(...))
     pdf_path = GENERATED_PDFS_DIR / filename
     if not pdf_path.exists():
-        # Also check Downloads as fallback
         dl_path = Path.home() / "Downloads" / filename
         if dl_path.exists():
             pdf_path = dl_path
@@ -95,6 +96,95 @@ async def download_pdf(filename: str):
         filename=filename,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+JOBS_STORE = {}
+
+async def process_job(job_id: str, request: WorkflowRequest):
+    try:
+        final_state = {}
+        JOBS_STORE[job_id]["status"] = "running"
+        
+        async for event in workflow_result_async(
+            resume_text=request.resume_text,
+            job_description=request.job_description,
+            full_name=request.full_name,
+            email=request.email,
+            phone=request.phone,
+            linkedin_url=request.linkedin_url,
+            github_url=request.github_url,
+        ):
+            if not isinstance(event, dict):
+                continue
+            
+            JOBS_STORE[job_id]["events"].append(event)
+            
+            if event.get("event") == "workflow_error":
+                JOBS_STORE[job_id]["status"] = "error"
+                JOBS_STORE[job_id]["error"] = event.get("error")
+                return
+
+            if event.get("event") == "workflow_state_ready":
+                final_state = dict(event.get("data", {}).get("state", {}))
+                
+        if not final_state:
+            final_state = {}
+
+        final_state.update({
+            "full_name": request.full_name,
+            "email": request.email,
+            "phone": request.phone,
+            "linkedin_url": request.linkedin_url,
+            "github_url": request.github_url,
+        })
+
+        output_filename = _build_output_filename(request.full_name, final_state.get("role"))
+        output_path = GENERATED_PDFS_DIR / output_filename
+
+        latex_code = await asyncio.to_thread(resume_builder, final_state)
+        pdf_path = await asyncio.to_thread(
+            render_latex_to_pdf,
+            latex_source=latex_code,
+            output_pdf=output_path,
+        )
+
+        final_response = {
+            "event": "workflow_completed",
+            "agent": "workflow",
+            "data": {
+                "state": final_state,
+                "pdf_filename": output_filename if pdf_path else None,
+                "pdf_path": str(pdf_path) if pdf_path else None,
+                "latex_code": latex_code,
+            },
+        }
+        
+        JOBS_STORE[job_id]["events"].append(final_response)
+        JOBS_STORE[job_id]["result"] = final_response["data"]
+        JOBS_STORE[job_id]["status"] = "completed"
+
+    except Exception as exc:
+        logger.exception(f"Job {job_id} failed")
+        JOBS_STORE[job_id]["status"] = "error"
+        JOBS_STORE[job_id]["error"] = str(exc)
+
+@app.post("/jobs")
+async def create_job(request: WorkflowRequest):
+    job_id = str(uuid.uuid4())
+    JOBS_STORE[job_id] = {
+        "status": "pending",
+        "events": [],
+        "result": None,
+        "error": None
+    }
+    asyncio.create_task(process_job(job_id, request))
+    return {"job_id": job_id}
+
+@app.get("/jobs/{job_id}")
+async def get_job(job_id: str):
+    if job_id not in JOBS_STORE:
+        raise HTTPException(404, "Job not found")
+    return JOBS_STORE[job_id]
 
 
 @app.post("/workflow-result")
