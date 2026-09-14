@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     texlive-latex-recommended \
     texlive-latex-extra \
     curl \
+    redis-server \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv for fast dependency management
@@ -32,5 +33,5 @@ RUN mkdir -p generated_pdfs
 # Expose ports for both FastAPI and Streamlit
 EXPOSE 8000 8501
 
-# Start both the Celery worker (in background) and FastAPI server (in foreground)
-CMD ["sh", "-c", "celery -A app.celery_app worker --loglevel=info & uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Start Redis server, Celery worker (in background), and FastAPI server (in foreground)
+CMD ["sh", "-c", "redis-server --daemonize yes && celery -A app.celery_app worker --loglevel=info & uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
