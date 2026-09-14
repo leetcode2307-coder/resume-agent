@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from app.graph.state import ResumeAgentState
-from app.llm import llm
+from app.llm import primary_llm as llm
 from app.schemas.resume import InterviewerOutput
 from app.prompts import INTERVIWER_SYSTEM_PROMPT
 

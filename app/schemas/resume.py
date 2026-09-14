@@ -178,6 +178,11 @@ class ResumeProject(BaseModel):
     bullets: List[str]
 
 class StructuredResume(BaseModel):
+    full_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    linkedin_url: str | None = None
+    github_url: str | None = None
     summary: str | None = None
     experience: List[ResumeExperience] = []
     education: List[ResumeEducation] = []

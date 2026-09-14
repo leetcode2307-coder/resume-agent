@@ -11,12 +11,12 @@ import '../models/workflow_models.dart';
 
 class ApiService {
   // https://resume-agent-1-lfag.onrender.com
-  static const String _baseUrl = 'https://resume-agent-1-lfag.onrender.com';
-  // static const String _baseUrl = 'http://127.0.0.1:8000';
+  // static const String _baseUrl = 'https://resume-agent-1-lfag.onrender.com';
+  static const String _baseUrl = 'http://127.0.0.1:8000';
 
   /// Streams SSE events from /workflow-result and yields parsed [WorkflowState]
   /// snapshots so the UI can react to each agent completing.
-  Stream<WorkflowState> runWorkflow(WorkflowRequest request) async* {
+  Stream<WorkflowState> runWorkflow(WorkflowRequest request, String? token) async* {
     WorkflowState state = const WorkflowState(status: WorkflowStatus.running);
     yield state;
 
@@ -28,6 +28,10 @@ class ApiService {
         ..headers['Content-Type'] = 'application/json'
         ..headers['Accept'] = 'text/event-stream'
         ..body = jsonEncode(request.toJson());
+
+      if (token != null) {
+        httpRequest.headers['Authorization'] = 'Bearer $token';
+      }
 
       final response = await client.send(httpRequest);
 
@@ -244,6 +248,75 @@ class ApiService {
       return int.tryParse(result.stdout.toString().trim()) ?? 0;
     } catch (_) {
       return 0;
+    }
+  }
+
+  Future<String> startJob(WorkflowRequest request, String? token) async {
+    final uri = Uri.parse('$_baseUrl/jobs');
+    final headers = {'Content-Type': 'application/json'};
+    if (token != null) headers['Authorization'] = 'Bearer $token';
+
+    final response = await http.post(uri, headers: headers, body: jsonEncode(request.toJson()));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['job_id'] as String;
+    } else {
+      throw Exception('Failed to start job: ${response.statusCode} ${response.body}');
+    }
+  }
+
+  Stream<WorkflowState> pollJob(String jobId, String? token) async* {
+    WorkflowState state = const WorkflowState(status: WorkflowStatus.running);
+    yield state;
+    
+    final uri = Uri.parse('$_baseUrl/jobs/$jobId');
+    final headers = <String, String>{};
+    if (token != null) headers['Authorization'] = 'Bearer $token';
+
+    int lastProcessedEventCount = 0;
+
+    while (true) {
+      try {
+        final response = await http.get(uri, headers: headers);
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final events = data['events'] as List<dynamic>? ?? [];
+          final status = data['status'] as String?;
+          final inputs = data['inputs'] as Map<String, dynamic>?;
+
+          if (inputs != null && state.requestInputs == null) {
+            state = state.copyWith(requestInputs: WorkflowRequest.fromJson(inputs));
+            yield state;
+          }
+
+          // Process only new events
+          for (int i = lastProcessedEventCount; i < events.length; i++) {
+            state = _applyEvent(state, events[i] as Map<String, dynamic>);
+            yield state;
+          }
+          lastProcessedEventCount = events.length;
+
+          if (status == 'completed' || status == 'error') {
+            if (status == 'completed' && state.status != WorkflowStatus.completed) {
+               state = state.copyWith(status: WorkflowStatus.completed);
+               yield state;
+            }
+            if (status == 'error' && state.status != WorkflowStatus.error) {
+               state = state.copyWith(status: WorkflowStatus.error, errorMessage: data['error'] as String? ?? 'Unknown backend error');
+               yield state;
+            }
+            break;
+          }
+        } else {
+          yield state.copyWith(status: WorkflowStatus.error, errorMessage: 'Failed to poll job: ${response.statusCode}');
+          break;
+        }
+      } catch (e) {
+        yield state.copyWith(status: WorkflowStatus.error, errorMessage: e.toString());
+        break;
+      }
+      
+      await Future.delayed(const Duration(seconds: 2));
     }
   }
 }

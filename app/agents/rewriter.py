@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from app.llm import llm
+from app.llm import primary_llm as llm
 from app.graph.state import ResumeAgentState
 from app.schemas.resume import RewriterOutput
 from app.prompts import REWRITER_SYSTEM_PROMPT
@@ -73,6 +73,14 @@ class Rewriter:
         
         ATS Score: {state.get('ats_score', 'N/A')}
         Initial Match Score: {state.get('initial_match_score', 'N/A')}
+        
+        ========================
+        PREVIOUS CRITIQUE FEEDBACK (Address these issues carefully!)
+        ========================
+        Iteration: {state.get('rewrite_iteration', 0)}
+        Critic Feedback: {state.get('critic_feedback', [])}
+        Detected Errors: {state.get('detected_errors', [])}
+        Weak Phrasing: {state.get('weak_phrasing', [])}
 
 
         ========================
@@ -89,6 +97,9 @@ class Rewriter:
         Follow the integrity rules, process, and quality bar defined in the
         system prompt strictly -- do not invent metrics, skills, employers, or
         experience that are not supported by the resume above.
+
+        IMPORTANT: Ensure that your structured output is strictly valid JSON.
+        For multi-line strings like the cover letter, use properly escaped newline characters (\\n) and avoid raw newlines.
 
         Return the result according to the required structured schema.
         """

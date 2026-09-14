@@ -11,3 +11,6 @@ langchain-openrouter
 langgraph
 
 
+celery>=5.3.6
+redis>=5.0.1
+supabase>=2.3.0

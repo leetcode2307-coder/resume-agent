@@ -28,6 +28,16 @@ class WorkflowRequest {
         if (linkedinUrl != null) 'linkedin_url': linkedinUrl,
         if (githubUrl != null) 'github_url': githubUrl,
       };
+
+  factory WorkflowRequest.fromJson(Map<String, dynamic> json) => WorkflowRequest(
+        resumeText: json['resume_text'] as String? ?? '',
+        jobDescription: json['job_description'] as String? ?? '',
+        fullName: json['full_name'] as String?,
+        email: json['email'] as String?,
+        phone: json['phone'] as String?,
+        linkedinUrl: json['linkedin_url'] as String?,
+        githubUrl: json['github_url'] as String?,
+      );
 }
 
 // ─── Analyzer ─────────────────────────────────────────────────────────────────
@@ -173,6 +183,7 @@ class WorkflowState {
   final String? errorMessage;
   final String? latexCode;
   final List<String> completedAgents;
+  final WorkflowRequest? requestInputs;
 
   const WorkflowState({
     this.status = WorkflowStatus.idle,
@@ -185,6 +196,7 @@ class WorkflowState {
     this.errorMessage,
     this.latexCode,
     this.completedAgents = const [],
+    this.requestInputs,
   });
 
   WorkflowState copyWith({
@@ -198,6 +210,7 @@ class WorkflowState {
     String? errorMessage,
     String? latexCode,
     List<String>? completedAgents,
+    WorkflowRequest? requestInputs,
   }) =>
       WorkflowState(
         status: status ?? this.status,
@@ -210,6 +223,7 @@ class WorkflowState {
         errorMessage: errorMessage ?? this.errorMessage,
         latexCode: latexCode ?? this.latexCode,
         completedAgents: completedAgents ?? this.completedAgents,
+        requestInputs: requestInputs ?? this.requestInputs,
       );
 }
 

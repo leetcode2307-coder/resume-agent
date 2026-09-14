@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/workflow_models.dart';
 import '../theme/app_theme.dart';
 import 'shared_widgets.dart';
@@ -35,14 +34,14 @@ class _InterviewWidgetState extends State<InterviewWidget>
     return AgentCard(
       title: 'Interview Prep Agent',
       subtitle: 'Tailored questions & study guide',
-      accentColor: AppTheme.accentGreen,
+      accentColor: Theme.of(context).colorScheme.primary,
       icon: Icons.record_voice_over_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Stats strip
           _StatsStrip(result: r),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // Tab bar
           _buildTabBar(),
@@ -55,17 +54,17 @@ class _InterviewWidgetState extends State<InterviewWidget>
               children: [
                 _QuestionList(
                   questions: r.behavioralQuestions,
-                  accentColor: AppTheme.accentGreen,
+                  accentColor: Theme.of(context).semantics.success,
                   emptyMsg: 'No behavioral questions generated.',
                 ),
                 _QuestionList(
                   questions: r.technicalQuestions,
-                  accentColor: AppTheme.accentCyan,
+                  accentColor: Theme.of(context).colorScheme.primary,
                   emptyMsg: 'No technical questions generated.',
                 ),
                 _QuestionList(
                   questions: r.gapQuestions,
-                  accentColor: AppTheme.accentAmber,
+                  accentColor: Theme.of(context).semantics.warning,
                   emptyMsg: 'No gap-focused questions generated.',
                 ),
                 _PrepTab(result: r),
@@ -80,9 +79,9 @@ class _InterviewWidgetState extends State<InterviewWidget>
   Widget _buildTabBar() {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surfaceElevated,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.border),
+        color: Theme.of(context).semantics.surfaceSecondary,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: TabBar(
         controller: _tabs,
@@ -90,20 +89,15 @@ class _InterviewWidgetState extends State<InterviewWidget>
         tabAlignment: TabAlignment.start,
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
-          color: AppTheme.accentGreen.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(8),
-          border:
-              Border.all(color: AppTheme.accentGreen.withOpacity(0.4)),
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.4)),
         ),
         dividerColor: Colors.transparent,
-        labelStyle: GoogleFonts.inter(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle:
-            GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w400),
-        labelColor: AppTheme.accentGreen,
-        unselectedLabelColor: AppTheme.textMuted,
+        labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 12),
+        unselectedLabelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
+        labelColor: Theme.of(context).colorScheme.primary,
+        unselectedLabelColor: Theme.of(context).semantics.textTertiary,
         tabs: const [
           Tab(text: 'Behavioral'),
           Tab(text: 'Technical'),
@@ -125,10 +119,10 @@ class _StatsStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stats = [
-      ('Behavioral', result.behavioralQuestions.length, AppTheme.accentGreen),
-      ('Technical', result.technicalQuestions.length, AppTheme.accentCyan),
-      ('Gap-Focused', result.gapQuestions.length, AppTheme.accentAmber),
-      ('Study Topics', result.keyTopicsToReview.length, AppTheme.accentPurple),
+      ('Behavioral', result.behavioralQuestions.length, Theme.of(context).semantics.success),
+      ('Technical', result.technicalQuestions.length, Theme.of(context).colorScheme.primary),
+      ('Gap-Focused', result.gapQuestions.length, Theme.of(context).semantics.warning),
+      ('Study Topics', result.keyTopicsToReview.length, Theme.of(context).colorScheme.primary),
     ];
 
     return Row(
@@ -139,30 +133,26 @@ class _StatsStrip extends StatelessWidget {
         return Expanded(
           child: Container(
             margin: EdgeInsets.only(right: isLast ? 0 : 8),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
             decoration: BoxDecoration(
               color: s.$3.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(color: s.$3.withOpacity(0.25)),
             ),
             child: Column(
               children: [
                 Text(
                   '${s.$2}',
-                  style: GoogleFonts.inter(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: s.$3,
-                  ),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: s.$3,
+                      ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   s.$1,
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    color: AppTheme.textMuted,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).semantics.textTertiary,
+                      ),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -193,7 +183,9 @@ class _QuestionList extends StatelessWidget {
       return Center(
         child: Text(
           emptyMsg,
-          style: GoogleFonts.inter(color: AppTheme.textMuted, fontSize: 13),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).semantics.textTertiary,
+              ),
         ),
       );
     }
@@ -222,36 +214,35 @@ class _PrepTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (result.keyTopicsToReview.isNotEmpty) ...[
-            const SectionLabel(
+            SectionLabel(
               text: 'Key Topics to Study',
-              color: AppTheme.accentPurple,
+              color: Theme.of(context).colorScheme.primary,
             ),
             Wrap(
-              spacing: 6,
-              runSpacing: 6,
+              spacing: 8,
+              runSpacing: 8,
               children: result.keyTopicsToReview
-                  .map((t) =>
-                      SkillChip(label: t, color: AppTheme.accentPurple))
+                  .map((t) => SkillChip(label: t, color: Theme.of(context).colorScheme.primary))
                   .toList(),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 24),
           ],
           if (result.preparationTips.isNotEmpty) ...[
-            const SectionLabel(
+            SectionLabel(
               text: 'Preparation Tips',
-              color: AppTheme.accentGreen,
+              color: Theme.of(context).semantics.success,
             ),
             ...result.preparationTips.map((tip) => ListItem(
                   text: tip,
-                  dotColor: AppTheme.accentGreen,
+                  dotColor: Theme.of(context).semantics.success,
                   icon: Icons.tips_and_updates_outlined,
                 )),
-            const SizedBox(height: 18),
+            const SizedBox(height: 24),
           ],
           if (result.expectedQuestions.isNotEmpty) ...[
-            const SectionLabel(
+            SectionLabel(
               text: 'Expected Questions',
-              color: AppTheme.accentCyan,
+              color: Theme.of(context).colorScheme.primary,
             ),
             ...result.expectedQuestions
                 .asMap()
@@ -259,7 +250,7 @@ class _PrepTab extends StatelessWidget {
                 .map((e) => QuestionCard(
                       question: e.value,
                       index: e.key + 1,
-                      accentColor: AppTheme.accentCyan,
+                      accentColor: Theme.of(context).colorScheme.primary,
                     )),
           ],
         ],

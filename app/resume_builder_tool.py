@@ -24,15 +24,15 @@ def resume_builder(state: dict) -> str:
         raise ValueError(f"Invalid structured_resume format: {type(structured_resume)}")
 
     contact_info = {
-        "full_name": state.get('full_name', 'Candidate Name'),
-        "email": state.get('email'),
-        "phone": state.get('phone'),
-        "linkedin_url": state.get('linkedin_url'),
-        "github_url": state.get('github_url'),
+        "full_name": state.get('full_name') or structured_resume.get('full_name') or 'Candidate Name',
+        "email": state.get('email') or structured_resume.get('email'),
+        "phone": state.get('phone') or structured_resume.get('phone'),
+        "linkedin_url": state.get('linkedin_url') or structured_resume.get('linkedin_url'),
+        "github_url": state.get('github_url') or structured_resume.get('github_url'),
     }
     
     if not contact_info["full_name"]:
-        raise ValueError("full_name is missing from state")
+        contact_info["full_name"] = "Candidate Name"
 
     return render_resume_latex(structured_resume, contact_info)
 

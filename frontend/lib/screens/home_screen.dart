@@ -1,9 +1,15 @@
 import 'dart:async';
+import 'dart:ui' as _ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../models/workflow_models.dart';
 import '../services/api_service.dart';
+import '../services/job_history_service.dart';
+import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../widgets/analyzer_widget.dart';
@@ -12,7 +18,8 @@ import '../widgets/critique_widget.dart';
 import '../widgets/interview_widget.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String? jobId;
+  const HomeScreen({super.key, this.jobId});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -37,6 +44,45 @@ class _HomeScreenState extends State<HomeScreen> {
   // UI
   bool _formExpanded = true;
   final _scrollCtrl = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.jobId != null) {
+      _formExpanded = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _pollExistingJob(widget.jobId!);
+      });
+    }
+  }
+
+  void _pollExistingJob(String jobId) {
+    final token = Provider.of<AuthProvider>(context, listen: false).token;
+    _sub?.cancel();
+    _sub = _api.pollJob(jobId, token).listen(
+      (state) {
+        setState(() {
+          _workflow = state;
+          if (_workflow.requestInputs != null && _resumeCtrl.text.isEmpty) {
+            final inputs = _workflow.requestInputs!;
+            _resumeCtrl.text = inputs.resumeText;
+            _jdCtrl.text = inputs.jobDescription;
+            _nameCtrl.text = inputs.fullName ?? '';
+            _emailCtrl.text = inputs.email ?? '';
+            _phoneCtrl.text = inputs.phone ?? '';
+            _linkedinCtrl.text = inputs.linkedinUrl ?? '';
+            _githubCtrl.text = inputs.githubUrl ?? '';
+          }
+        });
+      },
+      onError: (e) => setState(() {
+        _workflow = _workflow.copyWith(
+          status: WorkflowStatus.error,
+          errorMessage: e.toString(),
+        );
+      }),
+    );
+  }
 
   @override
   void dispose() {
@@ -79,28 +125,47 @@ class _HomeScreenState extends State<HomeScreen> {
           _githubCtrl.text.trim().isEmpty ? null : _githubCtrl.text.trim(),
     );
 
-    _sub = _api.runWorkflow(request).listen(
-      (state) {
-        setState(() => _workflow = state);
-        if (state.status == WorkflowStatus.completed ||
-            state.status == WorkflowStatus.error) {
-          // scroll results into view
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollCtrl.animateTo(
-              300,
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOut,
-            );
-          });
-        }
-      },
-      onError: (e) => setState(() {
+    final token = Provider.of<AuthProvider>(context, listen: false).token;
+    
+    // Start background job instead of holding SSE open
+    _api.startJob(request, token).then((jobId) async {
+      // Save to history
+      final historyService = JobHistoryService();
+      final title = request.fullName != null && request.fullName!.isNotEmpty 
+          ? '${request.fullName}\'s Resume' 
+          : 'Resume Optimization';
+      await historyService.addJob(jobId, title);
+
+      // Start polling
+      _sub = _api.pollJob(jobId, token).listen(
+        (state) {
+          setState(() => _workflow = state);
+          if (state.status == WorkflowStatus.completed ||
+              state.status == WorkflowStatus.error) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollCtrl.animateTo(
+                300,
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOut,
+              );
+            });
+          }
+        },
+        onError: (e) => setState(() {
+          _workflow = _workflow.copyWith(
+            status: WorkflowStatus.error,
+            errorMessage: e.toString(),
+          );
+        }),
+      );
+    }).catchError((e) {
+      setState(() {
         _workflow = _workflow.copyWith(
           status: WorkflowStatus.error,
           errorMessage: e.toString(),
         );
-      }),
-    );
+      });
+    });
   }
 
   bool _isDownloadingPdf = false;
@@ -124,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          backgroundColor: AppTheme.accentGreen,
+          backgroundColor: Theme.of(context).semantics.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -133,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Download failed: $e'),
-          backgroundColor: AppTheme.accentRed,
+          backgroundColor: Theme.of(context).colorScheme.error,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -155,25 +220,102 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      drawer: _buildDrawer(context),
       body: CustomScrollView(
         controller: _scrollCtrl,
         slivers: [
-          _buildAppBar(),
+          _buildAppBar(context),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildPipeline(),
-                  const SizedBox(height: 24),
-                  _buildFormSection(),
-                  const SizedBox(height: 24),
-                  if (_workflow.status != WorkflowStatus.idle) _buildResults(),
-                  const SizedBox(height: 48),
-                ],
-              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth > 800) {
+                  // Desktop split view
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 64, right: 32, top: 24, bottom: 24),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left Column (40%)
+                        Expanded(
+                          flex: 4,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildPipeline(),
+                              const SizedBox(height: 24),
+                              _buildFormSection(),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 32),
+                        // Right Column (60%)
+                        Expanded(
+                          flex: 6,
+                          child: _workflow.status != WorkflowStatus.idle
+                              ? _buildResults()
+                              : Container(
+                                  padding: const EdgeInsets.all(48),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary.withOpacity(0.02),
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(
+                                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                      style: BorderStyle.solid,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.auto_awesome_mosaic_rounded,
+                                        size: 64,
+                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Text(
+                                        'Ready to Analyze',
+                                        style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                                              color: Theme.of(context).textTheme.displayLarge?.color?.withOpacity(0.7),
+                                            ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'Paste your resume and job description on the left. Our multi-agent AI pipeline will analyze your fit, rewrite your content for ATS compatibility, and prepare a custom interview guide.',
+                                        textAlign: TextAlign.center,
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                              height: 1.6,
+                                              color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6),
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  );
+                } else {
+                  // Tablet & Mobile view
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 64, right: 24, top: 16, bottom: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildPipeline(),
+                          const SizedBox(height: 24),
+                          _buildFormSection(),
+                          const SizedBox(height: 24),
+                          if (_workflow.status != WorkflowStatus.idle) _buildResults(),
+                          const SizedBox(height: 48),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+              },
             ),
           ),
         ],
@@ -181,29 +323,115 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── AppBar ───────────────────────────────────────────────────────────────────
+  // ─── Drawer ───────────────────────────────────────────────────────────────────
+
+  Widget _buildDrawer(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.themeMode == ThemeMode.dark;
+    final primary = Theme.of(context).colorScheme.primary;
+    final textPrim = Theme.of(context).textTheme.displayLarge?.color;
+    final textSec = Theme.of(context).textTheme.bodyMedium?.color;
+
+    return Drawer(
+      backgroundColor: Theme.of(context).semantics.surfaceSecondary,
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Row(
+                children: [
+                  Icon(Icons.auto_awesome_rounded, color: primary, size: 28),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Resume AI',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ],
+              ),
+            ),
+            Divider(color: Theme.of(context).dividerColor, height: 1),
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              leading: Icon(Icons.add_circle_outline_rounded, color: textSec, size: 22),
+              title: Text('New Resume', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textPrim, fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                context.go('/home');
+              },
+            ),
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              leading: Icon(Icons.history_rounded, color: textSec, size: 22),
+              title: Text('My Resumes', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textPrim, fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/history');
+              },
+            ),
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              leading: Icon(Icons.info_outline_rounded, color: textSec, size: 22),
+              title: Text('About Us', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textPrim, fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/about');
+              },
+            ),
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              leading: Icon(Icons.mail_outline_rounded, color: textSec, size: 22),
+              title: Text('Contact Us', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textPrim, fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/contact');
+              },
+            ),
+            const Spacer(),
+            Divider(color: Theme.of(context).dividerColor, height: 1),
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              leading: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, color: textSec, size: 22),
+              title: Text('Dark Mode', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textPrim, fontWeight: FontWeight.w500)),
+              trailing: Switch(
+                value: isDark,
+                onChanged: (val) => themeProvider.toggleTheme(val),
+                activeColor: primary,
+              ),
+              onTap: () => themeProvider.toggleTheme(!isDark),
+            ),
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              leading: Icon(Icons.logout_rounded, color: Theme.of(context).colorScheme.error, size: 22),
+              title: Text('Logout', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w500)),
+              onTap: () {
+                Provider.of<AuthProvider>(context, listen: false).logout();
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
 
   // ─── AppBar ───────────────────────────────────────────────────────────────────
 
-  SliverAppBar _buildAppBar() {
+  SliverAppBar _buildAppBar(BuildContext context) {
     return SliverAppBar(
-      backgroundColor: AppTheme.bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.85),
       expandedHeight: 120,
       pinned: true,
       elevation: 0,
       toolbarHeight: 64,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(
-            // Removed 'const'
-            gradient: LinearGradient(
-              colors: [AppTheme.bg, AppTheme.surface],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+      flexibleSpace: ClipRect(
+        child: BackdropFilter(
+          filter: _ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: FlexibleSpaceBar(
+            background: Container(
+              color: Colors.transparent,
             ),
-          ),
-        ),
-        titlePadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        titlePadding: const EdgeInsets.only(left: 64, right: 24, top: 8, bottom: 8),
         title: Row(
           children: [
             Flexible(
@@ -218,7 +446,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: GoogleFonts.inter(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
+                      color: Theme.of(context).textTheme.displayLarge?.color,
                     ),
                   ),
                   Text(
@@ -227,7 +455,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     maxLines: 1,
                     style: GoogleFonts.inter(
                       fontSize: 10,
-                      color: AppTheme.textMuted,
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
                     ),
                   ),
                 ],
@@ -243,10 +471,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: GoogleFonts.inter(fontSize: 13),
                 ),
                 style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.textMuted,
+                  foregroundColor: Theme.of(context).textTheme.bodyMedium?.color,
                 ),
               ),
           ],
+        ),
+      ),
         ),
       ),
     );
@@ -268,11 +498,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 44),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,61 +511,47 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(
                 'Workflow Pipeline',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textSecondary,
-                ),
+                style: Theme.of(context).textTheme.titleMedium,
               ),
               const Spacer(),
               if (_workflow.status == WorkflowStatus.completed)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppTheme.accentGreen.withOpacity(0.12),
+                    color: Theme.of(context).semantics.success.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: AppTheme.accentGreen.withOpacity(0.3)),
+                    border: Border.all(color: Theme.of(context).semantics.success.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_rounded,
-                          color: AppTheme.accentGreen, size: 12),
+                      Icon(Icons.check_circle_rounded, color: Theme.of(context).semantics.success, size: 12),
                       const SizedBox(width: 4),
                       Text(
                         'Completed',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: AppTheme.accentGreen,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Theme.of(context).semantics.success,
+                            ),
                       ),
                     ],
                   ),
                 ),
               if (_workflow.status == WorkflowStatus.error)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppTheme.accentRed.withOpacity(0.12),
+                    color: Theme.of(context).colorScheme.error.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(20),
-                    border:
-                        Border.all(color: AppTheme.accentRed.withOpacity(0.3)),
+                    border: Border.all(color: Theme.of(context).colorScheme.error.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_rounded,
-                          color: AppTheme.accentRed, size: 12),
+                      Icon(Icons.error_rounded, color: Theme.of(context).colorScheme.error, size: 12),
                       const SizedBox(width: 4),
                       Text(
                         'Error',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: AppTheme.accentRed,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
                       ),
                     ],
                   ),
@@ -345,12 +561,12 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
-              final isMobile = constraints.maxWidth < 600;
+              final isMobile = constraints.maxWidth < 350;
               final steps = [
                 PipelineStep(
                   label: 'Analyzer',
                   icon: Icons.manage_search_rounded,
-                  color: AppTheme.accentBlue,
+                  color: isCompleted('analyzer') ? Theme.of(context).semantics.success : Theme.of(context).colorScheme.primary,
                   completed: isCompleted('analyzer'),
                   active: isActive('analyzer') || (running && agents.isEmpty),
                   fixedLineWidth: isMobile ? 30 : null,
@@ -358,7 +574,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 PipelineStep(
                   label: 'Rewriter',
                   icon: Icons.edit_note_rounded,
-                  color: AppTheme.accentPurple,
+                  color: isCompleted('rewriter') ? Theme.of(context).semantics.success : Theme.of(context).colorScheme.primary,
                   completed: isCompleted('rewriter'),
                   active: isActive('rewriter'),
                   fixedLineWidth: isMobile ? 30 : null,
@@ -366,7 +582,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 PipelineStep(
                   label: 'Critique',
                   icon: Icons.rate_review_rounded,
-                  color: AppTheme.accentAmber,
+                  color: isCompleted('critic') ? Theme.of(context).semantics.success : Theme.of(context).colorScheme.primary,
                   completed: isCompleted('critic'),
                   active: isActive('critic'),
                   fixedLineWidth: isMobile ? 30 : null,
@@ -374,7 +590,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 PipelineStep(
                   label: 'Interview',
                   icon: Icons.record_voice_over_rounded,
-                  color: AppTheme.accentGreen,
+                  color: isCompleted('interview_prep') ? Theme.of(context).semantics.success : Theme.of(context).colorScheme.primary,
                   completed: isCompleted('interview_prep'),
                   active: isActive('interview_prep'),
                   isLast: true,
@@ -408,9 +624,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildFormSection() {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         children: [
@@ -425,11 +641,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppTheme.accentBlue.withOpacity(0.12),
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.description_rounded,
-                        color: AppTheme.accentBlue, size: 18),
+                    child: Icon(Icons.description_rounded,
+                        color: Theme.of(context).colorScheme.primary, size: 18),
                   ),
                   const SizedBox(width: 14),
                   Column(
@@ -440,14 +656,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).textTheme.displayLarge?.color,
                         ),
                       ),
                       Text(
                         'Resume text & job description',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: AppTheme.textMuted,
+                          color: Theme.of(context).textTheme.labelSmall?.color,
                         ),
                       ),
                     ],
@@ -457,7 +673,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     _formExpanded
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
-                    color: AppTheme.textMuted,
+                    color: Theme.of(context).textTheme.labelSmall?.color,
                   ),
                 ],
               ),
@@ -472,7 +688,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Divider(color: AppTheme.border),
+                     Divider(color: Theme.of(context).dividerColor),
                     const SizedBox(height: 16),
 
                     // Required fields
@@ -505,7 +721,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: GoogleFonts.inter(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.textMuted,
+                        color: Theme.of(context).textTheme.labelSmall?.color,
                         letterSpacing: 0.8,
                       ),
                     ),
@@ -564,12 +780,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           _workflow.status == WorkflowStatus.running
                               ? 'Running workflow…'
                               : 'Analyze & Optimize Resume',
+                          style: Theme.of(context).textTheme.labelLarge,
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
                               _workflow.status == WorkflowStatus.running
-                                  ? AppTheme.textMuted
-                                  : AppTheme.accentBlue,
+                                  ? Theme.of(context).disabledColor
+                                  : Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
@@ -618,13 +835,13 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 20),
           ] else if (_workflow.status == WorkflowStatus.running &&
               !_workflow.completedAgents.contains('analyzer')) ...[
-            const AgentCard(
+            AgentCard(
               title: 'Analyzer Agent',
               subtitle: 'Resume ↔ JD gap analysis',
-              accentColor: AppTheme.accentBlue,
+              accentColor: Theme.of(context).colorScheme.primary,
               icon: Icons.manage_search_rounded,
               isLoading: true,
-              child: SizedBox.shrink(),
+              child: const SizedBox.shrink(),
             ),
             const SizedBox(height: 20),
           ],
@@ -634,13 +851,13 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 20),
           ] else if (_workflow.completedAgents.contains('analyzer') &&
               _workflow.status == WorkflowStatus.running) ...[
-            const AgentCard(
+            AgentCard(
               title: 'Rewriter Agent',
               subtitle: 'ATS-optimized resume & cover letter',
-              accentColor: AppTheme.accentPurple,
+              accentColor: Theme.of(context).colorScheme.primary,
               icon: Icons.edit_note_rounded,
               isLoading: true,
-              child: SizedBox.shrink(),
+              child: const SizedBox.shrink(),
             ),
             const SizedBox(height: 20),
           ],
@@ -650,13 +867,13 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 20),
           ] else if (_workflow.completedAgents.contains('rewriter') &&
               _workflow.status == WorkflowStatus.running) ...[
-            const AgentCard(
+            AgentCard(
               title: 'Critique Agent',
               subtitle: 'Quality review',
-              accentColor: AppTheme.accentAmber,
+              accentColor: Theme.of(context).colorScheme.primary,
               icon: Icons.rate_review_rounded,
               isLoading: true,
-              child: SizedBox.shrink(),
+              child: const SizedBox.shrink(),
             ),
             const SizedBox(height: 20),
           ],
@@ -665,13 +882,13 @@ class _HomeScreenState extends State<HomeScreen> {
             InterviewWidget(result: _workflow.interview!),
           ] else if (_workflow.completedAgents.contains('critic') &&
               _workflow.status == WorkflowStatus.running) ...[
-            const AgentCard(
+            AgentCard(
               title: 'Interview Prep Agent',
               subtitle: 'Tailored questions & study guide',
-              accentColor: AppTheme.accentGreen,
+              accentColor: Theme.of(context).colorScheme.primary,
               icon: Icons.record_voice_over_rounded,
               isLoading: true,
-              child: SizedBox.shrink(),
+              child: const SizedBox.shrink(),
             ),
           ],
       ],
@@ -719,7 +936,7 @@ class _HomeScreenState extends State<HomeScreen> {
       minLines: minLines,
       maxLines: maxLines,
       validator: validator,
-      style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textSecondary),
+      style: GoogleFonts.inter(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium?.color),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
@@ -735,10 +952,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     return TextFormField(
       controller: controller,
-      style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textSecondary),
+      style: GoogleFonts.inter(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium?.color),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, size: 16, color: AppTheme.textMuted),
+        prefixIcon: Icon(icon, size: 16, color: Theme.of(context).textTheme.labelSmall?.color),
       ),
     );
   }
@@ -753,26 +970,26 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final errorColor = Theme.of(context).colorScheme.error;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.accentRed.withOpacity(0.08),
+        color: errorColor.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.accentRed.withOpacity(0.3)),
+        border: Border.all(color: errorColor.withOpacity(0.3)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded,
-              color: AppTheme.accentRed, size: 18),
+          Icon(Icons.error_outline_rounded, color: errorColor, size: 18),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               message,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: AppTheme.accentRed,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: errorColor,
+                  ),
             ),
           ),
         ],
@@ -797,20 +1014,20 @@ class _PdfBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.accentGreen.withOpacity(0.08),
+        color: Theme.of(context).semantics.success.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.accentGreen.withOpacity(0.3)),
+        border: Border.all(color: Theme.of(context).semantics.success.withOpacity(0.3)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.accentGreen.withOpacity(0.15),
+              color: Theme.of(context).semantics.success.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.picture_as_pdf_rounded,
-                color: AppTheme.accentGreen, size: 20),
+            child: Icon(Icons.picture_as_pdf_rounded,
+                color: Theme.of(context).semantics.success, size: 20),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -822,7 +1039,7 @@ class _PdfBanner extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.accentGreen,
+                    color: Theme.of(context).semantics.success,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -831,7 +1048,7 @@ class _PdfBanner extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
                   ),
                 ),
               ],
@@ -858,7 +1075,7 @@ class _PdfBanner extends StatelessWidget {
               ),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.accentGreen,
+              backgroundColor: Theme.of(context).semantics.success,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               shape: RoundedRectangleBorder(
@@ -882,9 +1099,9 @@ class _LatexBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.accentAmber.withOpacity(0.08),
+        color: Theme.of(context).semantics.warning.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.accentAmber.withOpacity(0.3)),
+        border: Border.all(color: Theme.of(context).semantics.warning.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -894,11 +1111,11 @@ class _LatexBanner extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.accentAmber.withOpacity(0.15),
+                  color: Theme.of(context).semantics.warning.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.code_rounded,
-                    color: AppTheme.accentAmber, size: 20),
+                child: Icon(Icons.code_rounded,
+                    color: Theme.of(context).semantics.warning, size: 20),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -910,7 +1127,7 @@ class _LatexBanner extends StatelessWidget {
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AppTheme.accentAmber,
+                        color: Theme.of(context).semantics.warning,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -918,7 +1135,7 @@ class _LatexBanner extends StatelessWidget {
                       'But your LaTeX code is ready. You can compile it on Overleaf.',
                       style: GoogleFonts.inter(
                         fontSize: 12,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                       ),
                     ),
                   ],
@@ -931,7 +1148,7 @@ class _LatexBanner extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: const Text('LaTeX code copied to clipboard! Paste it in Overleaf.'),
-                      backgroundColor: AppTheme.accentAmber,
+                      backgroundColor: Theme.of(context).semantics.warning,
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
@@ -945,7 +1162,7 @@ class _LatexBanner extends StatelessWidget {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accentAmber,
+                  backgroundColor: Theme.of(context).semantics.warning,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   shape: RoundedRectangleBorder(
@@ -959,9 +1176,9 @@ class _LatexBanner extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.surface,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppTheme.border),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: SelectableText(
               latexCode.length > 500
@@ -969,7 +1186,7 @@ class _LatexBanner extends StatelessWidget {
                   : latexCode,
               style: GoogleFonts.firaCode(
                 fontSize: 11,
-                color: AppTheme.textMuted,
+                color: Theme.of(context).textTheme.labelSmall?.color,
               ),
             ),
           ),

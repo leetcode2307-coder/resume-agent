@@ -35,7 +35,7 @@ class _RewriterWidgetState extends State<RewriterWidget>
     return AgentCard(
       title: 'Rewriter Agent',
       subtitle: 'ATS-optimized resume & cover letter',
-      accentColor: AppTheme.accentPurple,
+      accentColor: Theme.of(context).colorScheme.primary,
       icon: Icons.edit_note_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,28 +43,24 @@ class _RewriterWidgetState extends State<RewriterWidget>
           // Tab bar
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.surfaceElevated,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppTheme.border),
+              color: Theme.of(context).semantics.surfaceSecondary,
+              borderRadius: BorderRadius.circular(8), // radius-md
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: TabBar(
               controller: _tabs,
               indicatorSize: TabBarIndicatorSize.tab,
               indicator: BoxDecoration(
-                color: AppTheme.accentPurple.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                    color: AppTheme.accentPurple.withOpacity(0.4)),
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.4)),
               ),
               dividerColor: Colors.transparent,
-              labelStyle: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-              unselectedLabelStyle:
-                  GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w400),
-              labelColor: AppTheme.accentPurple,
-              unselectedLabelColor: AppTheme.textMuted,
+              labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 12),
+              unselectedLabelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
+              labelColor: Theme.of(context).colorScheme.primary,
+              unselectedLabelColor: Theme.of(context).semantics.textTertiary,
               tabs: const [
                 Tab(text: 'Bullet Points'),
                 Tab(text: 'Rewritten Resume'),
@@ -72,7 +68,7 @@ class _RewriterWidgetState extends State<RewriterWidget>
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 16), // md
 
           SizedBox(
             height: 360,
@@ -116,11 +112,11 @@ class _BulletPointsTab extends StatelessWidget {
       itemCount: bullets.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, i) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), // 8pt align
         decoration: BoxDecoration(
-          color: AppTheme.surfaceElevated,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppTheme.border),
+          color: Theme.of(context).semantics.surfaceSecondary,
+          borderRadius: BorderRadius.circular(8), // radius-md
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,7 +127,7 @@ class _BulletPointsTab extends StatelessWidget {
                 width: 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: AppTheme.accentPurple,
+                  color: Theme.of(context).colorScheme.primary,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -140,16 +136,12 @@ class _BulletPointsTab extends StatelessWidget {
             Expanded(
               child: Text(
                 bullets[i],
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: AppTheme.textSecondary,
-                  height: 1.6,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
             IconButton(
               icon: const Icon(Icons.copy_rounded, size: 14),
-              color: AppTheme.textMuted,
+              color: Theme.of(context).semantics.textTertiary,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
               onPressed: () {
@@ -191,22 +183,18 @@ class _TextTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceElevated,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.border),
+            color: Theme.of(context).semantics.surfaceSecondary,
+            borderRadius: BorderRadius.circular(8), // radius-md
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: SingleChildScrollView(
             child: SelectableText(
               text!,
               style: isCoverLetter
-                  ? GoogleFonts.inter(
-                      fontSize: 13,
-                      color: AppTheme.textSecondary,
-                      height: 1.75,
-                    )
+                  ? Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.75)
                   : GoogleFonts.sourceCodePro(
                       fontSize: 12,
-                      color: AppTheme.textSecondary,
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
                       height: 1.65,
                     ),
             ),
@@ -217,7 +205,7 @@ class _TextTab extends StatelessWidget {
           right: 8,
           child: IconButton(
             icon: const Icon(Icons.copy_rounded, size: 16),
-            color: AppTheme.textMuted,
+            color: Theme.of(context).semantics.textTertiary,
             onPressed: () {
               Clipboard.setData(ClipboardData(text: text!));
               ScaffoldMessenger.of(context).showSnackBar(
@@ -245,10 +233,9 @@ class _EmptyPlaceholder extends StatelessWidget {
     return Center(
       child: Text(
         message,
-        style: GoogleFonts.inter(
-          fontSize: 13,
-          color: AppTheme.textMuted,
-        ),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).semantics.textTertiary,
+            ),
       ),
     );
   }

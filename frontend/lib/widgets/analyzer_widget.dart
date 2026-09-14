@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/workflow_models.dart';
 import '../theme/app_theme.dart';
 import 'shared_widgets.dart';
@@ -14,14 +13,14 @@ class AnalyzerWidget extends StatelessWidget {
     return AgentCard(
       title: 'Analyzer Agent',
       subtitle: 'Resume ↔ JD gap analysis',
-      accentColor: AppTheme.accentBlue,
+      accentColor: Theme.of(context).colorScheme.primary,
       icon: Icons.manage_search_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Role / company header row
           _RoleHeader(result: result),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24), // lg
 
           // Score gauges
           Row(
@@ -29,64 +28,64 @@ class AnalyzerWidget extends StatelessWidget {
             children: [
               ScoreGauge(
                 score: result.atsScore,
-                label: 'ATS Score',
-                color: _scoreColor(result.atsScore),
+                label: 'ATS Match Score',
+                color: _scoreColor(context, result.atsScore),
               ),
               ScoreGauge(
                 score: result.initialMatchScore,
-                label: 'Match Score',
-                color: _scoreColor(result.initialMatchScore),
+                label: 'Job Alignment',
+                color: _scoreColor(context, result.initialMatchScore),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          const Divider(color: AppTheme.border),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24), // lg
+          Divider(color: Theme.of(context).dividerColor),
+          const SizedBox(height: 16), // md
 
           // Skills grid
           if (result.matchingSkills.isNotEmpty) ...[
-            const SectionLabel(
+            SectionLabel(
               text: 'Matching Skills',
-              color: AppTheme.accentGreen,
+              color: Theme.of(context).semantics.success,
             ),
             _WrapChips(
               items: result.matchingSkills,
-              color: AppTheme.accentGreen,
+              color: Theme.of(context).semantics.success,
             ),
             const SizedBox(height: 16),
           ],
           if (result.missingSkills.isNotEmpty) ...[
-            const SectionLabel(
+            SectionLabel(
               text: 'Missing Skills',
-              color: AppTheme.accentRed,
+              color: Theme.of(context).colorScheme.error,
             ),
             _WrapChips(
-              items: result.missingSkills,
-              color: AppTheme.accentRed,
+              items: result.missingSkills.map((s) => '- $s').toList(),
+              color: Theme.of(context).colorScheme.error,
             ),
             const SizedBox(height: 16),
           ],
           if (result.niceToHaveSkills.isNotEmpty) ...[
-            const SectionLabel(
+            SectionLabel(
               text: 'Nice to Have',
-              color: AppTheme.accentAmber,
+              color: Theme.of(context).semantics.warning,
             ),
             _WrapChips(
               items: result.niceToHaveSkills,
-              color: AppTheme.accentAmber,
+              color: Theme.of(context).semantics.warning,
             ),
             const SizedBox(height: 16),
           ],
           if (result.techStack.isNotEmpty) ...[
-            const SectionLabel(
+            SectionLabel(
               text: 'Tech Stack',
-              color: AppTheme.accentCyan,
+              color: Theme.of(context).colorScheme.primary,
             ),
-            _WrapChips(items: result.techStack, color: AppTheme.accentCyan),
+            _WrapChips(items: result.techStack, color: Theme.of(context).colorScheme.primary),
             const SizedBox(height: 16),
           ],
 
-          const Divider(color: AppTheme.border),
+          Divider(color: Theme.of(context).dividerColor),
           const SizedBox(height: 16),
 
           // Strengths / Weaknesses
@@ -97,30 +96,30 @@ class AnalyzerWidget extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SectionLabel(
+                    SectionLabel(
                       text: 'Strengths',
-                      color: AppTheme.accentGreen,
+                      color: Theme.of(context).semantics.success,
                     ),
                     ...result.strengths.map((s) => ListItem(
                           text: s,
-                          dotColor: AppTheme.accentGreen,
+                          dotColor: Theme.of(context).semantics.success,
                           icon: Icons.check_circle_outline_rounded,
                         )),
                   ],
                 ),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 24),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SectionLabel(
+                    SectionLabel(
                       text: 'Weaknesses',
-                      color: AppTheme.accentRed,
+                      color: Theme.of(context).colorScheme.error,
                     ),
                     ...result.weaknesses.map((w) => ListItem(
                           text: w,
-                          dotColor: AppTheme.accentRed,
+                          dotColor: Theme.of(context).colorScheme.error,
                           icon: Icons.warning_amber_rounded,
                         )),
                   ],
@@ -131,15 +130,15 @@ class AnalyzerWidget extends StatelessWidget {
 
           if (result.keywordGaps.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Divider(color: AppTheme.border),
+            Divider(color: Theme.of(context).dividerColor),
             const SizedBox(height: 16),
-            const SectionLabel(
+            SectionLabel(
               text: 'Keyword Gaps',
-              color: AppTheme.accentAmber,
+              color: Theme.of(context).semantics.warning,
             ),
             _WrapChips(
               items: result.keywordGaps,
-              color: AppTheme.accentAmber,
+              color: Theme.of(context).semantics.warning,
               small: true,
             ),
           ],
@@ -148,10 +147,10 @@ class AnalyzerWidget extends StatelessWidget {
     );
   }
 
-  Color _scoreColor(double score) {
-    if (score >= 75) return AppTheme.accentGreen;
-    if (score >= 50) return AppTheme.accentAmber;
-    return AppTheme.accentRed;
+  Color _scoreColor(BuildContext context, double score) {
+    if (score >= 75) return Theme.of(context).semantics.success;
+    if (score >= 50) return Theme.of(context).semantics.warning;
+    return Theme.of(context).colorScheme.error;
   }
 }
 
@@ -167,9 +166,9 @@ class _RoleHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceElevated,
+        color: Theme.of(context).semantics.surfaceSecondary,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         children: [
@@ -179,11 +178,7 @@ class _RoleHeader extends StatelessWidget {
               children: [
                 Text(
                   result.role ?? 'Role not specified',
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 if (result.company != null || result.seniority != null)
                   const SizedBox(height: 4),
@@ -192,26 +187,22 @@ class _RoleHeader extends StatelessWidget {
                     if (result.company != null)
                       Text(
                         result.company!,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: AppTheme.textSecondary,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     if (result.company != null && result.seniority != null)
                       Text(
                         ' · ',
-                        style: GoogleFonts.inter(
-                          color: AppTheme.textMuted,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).semantics.textTertiary,
+                            ),
                       ),
                     if (result.seniority != null)
                       Text(
                         result.seniority!,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: AppTheme.accentBlue,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
                       ),
                   ],
                 ),
@@ -238,8 +229,8 @@ class _WrapChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+      spacing: 8,
+      runSpacing: 8,
       children: items
           .map((item) => SkillChip(label: item, color: color, small: small))
           .toList(),

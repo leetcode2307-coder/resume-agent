@@ -542,7 +542,16 @@ if "last_result" in st.session_state:
                 use_container_width=True,
             )
         else:
-            st.info(f"PDF saved on the server at: `{pdf_path}`")
+            
+            download_url = f"{api_url}/download-pdf/{pdf_filename}"
+            st.markdown(
+                f'<a href="{download_url}" target="_blank" '
+                f'style="display: inline-block; padding: 0.6rem 1.2rem; background-color: #FF4B4B; '
+                f'color: white; text-decoration: none; border-radius: 8px; font-weight: 600; '
+                f'text-align: center; width: 100%;">⬇️ Download resume PDF</a>',
+                unsafe_allow_html=True,
+            )
+            st.caption(f"Served from cloud storage.")
     else:
         st.warning("The workflow completed, but PDF generation failed. See details below.")
 

@@ -43,10 +43,12 @@ def generate_resume_html(state: Dict[str, Any]) -> str:
         contact_parts.append(html.escape(email))
     if phone and phone != "[Phone Number]":
         contact_parts.append(html.escape(phone))
-    if linkedin_url and linkedin_url != "[LinkedIn URL]":
-        contact_parts.append(f'<a href="{html.escape(linkedin_url)}">{html.escape(linkedin_url)}</a>')
-    if github_url and github_url != "[GitHub URL]":
-        contact_parts.append(f'<a href="{html.escape(github_url)}">{html.escape(github_url)}</a>')
+    if linkedin_url and linkedin_url not in ["[LinkedIn URL]", "linkedin.com", "https://linkedin.com"]:
+        url = linkedin_url if linkedin_url.startswith("http") else f"https://{linkedin_url}"
+        contact_parts.append(f'<a href="{html.escape(url)}">LinkedIn</a>')
+    if github_url and github_url not in ["[GitHub URL]", "github.com", "https://github.com"]:
+        url = github_url if github_url.startswith("http") else f"https://{github_url}"
+        contact_parts.append(f'<a href="{html.escape(url)}">GitHub</a>')
 
     contact_html = " &bull; ".join(contact_parts) if contact_parts else html.escape(f"{email} | {phone}")
 

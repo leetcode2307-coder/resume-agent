@@ -24,8 +24,8 @@ def should_rewrite(state: ResumeAgentState) -> list[str]:
     """Decide whether the resume should prepare for filtering or rewriting."""
     # Always run interview prep in parallel
     next_nodes = ["interview_agent"]
-    if state.get("initial_match_score", 0) < 80:
-        next_nodes.append("rewriter_node")
+    # We must always run rewriter_node to generate the structured_resume for the PDF!
+    next_nodes.append("rewriter_node")
     return next_nodes
 
 
@@ -90,9 +90,9 @@ async def workflow_result_async(
         "linkedin_url": linkedin_url,
         "github_url": github_url,
         "rewrite_iteration": 0,
-        "max_rewrite_iterations": 2,
+        "max_rewrite_iterations": 3,
         "critic_score": None,
-        "quality_threshold": 7,
+        "quality_threshold": 8,
     }
 
     final_state = dict(initial_state)

@@ -1,8 +1,10 @@
+
 from __future__ import annotations
 
 from typing import Any
 
 from langchain_openrouter import ChatOpenRouter
+from langchain_groq import ChatGroq
 
 from app.config import settings
 
@@ -39,11 +41,11 @@ def _get_model_name(model_name: str) -> str:
     return _MODEL_ALIASES.get(model_name, model_name)
 
 
-def _build_model(model_name: str) -> ChatOpenRouter:
+def _build_model(model_name: str) -> Any:
     return ChatOpenRouter(
         api_key=settings.openrouter_api_key,
         model=_get_model_name(model_name),
-        timeout=900000, # ChatOpenRouter expects timeout in milliseconds (900000ms = 900s)
+        timeout=900000, 
         max_retries=3,
         callbacks=[TokenLoggingCallback()]
     )
@@ -111,8 +113,8 @@ class _ModelChain:
             raise last_error
         raise RuntimeError("No models were configured for async invocation.")
 
-    def with_structured_output(self, schema: Any):
-        structured_models = [model.with_structured_output(schema) for model in self.models]
+    def with_structured_output(self, schema: Any, **kwargs):
+        structured_models = [model.with_structured_output(schema, **kwargs) for model in self.models]
 
         class _StructuredInvoker:
             def invoke(self_inner, messages):
@@ -171,4 +173,5 @@ def get_llm(*model_names: str) -> _ModelChain:
 
 
 llm = get_llm("primary", "fallback")
+primary_llm = get_llm("primary", "fallback")
 fallback_llm = get_llm("fallback")

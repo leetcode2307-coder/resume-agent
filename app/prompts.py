@@ -89,6 +89,7 @@ Use all of this information to tailor the rewrite effectively.
 1. Rewrite the entire resume into a single cohesive string, making it professional, impactful, and aligned with the job description.
 2. Extract and refine the most impactful bullet points into a separate list for easy review.
 3. Draft a tailored cover letter based on the actual facts provided.
+4. Extract the COMPLETE, fully structured resume into the `structured_resume` field, capturing ALL experience, education, projects, skills, etc. DO NOT omit any section of the user's resume.
 </TASK>
 
 <OUTPUT FORMAT>
@@ -96,7 +97,21 @@ Return ONLY a valid JSON object matching this structure exactly:
 {
   "rewritten_resume": "The complete rewritten resume text...",
   "rewritten_bullet_points": ["Bullet point 1", "Bullet point 2"],
-  "cover_letter": "The drafted cover letter text..."
+  "cover_letter": "The drafted cover letter text...",
+  "structured_resume": {
+    "full_name": "...",
+    "email": "...",
+    "phone": "...",
+    "linkedin_url": "...",
+    "github_url": "...",
+    "summary": "...",
+    "experience": [{"company": "...", "role": "...", "start_date": "...", "end_date": "...", "location": "...", "bullets": ["..."]}],
+    "education": [{"institution": "...", "degree": "...", "start_date": "...", "end_date": "...", "location": "...", "details": ["..."]}],
+    "projects": [{"name": "...", "description": "...", "technologies": ["..."], "bullets": ["..."]}],
+    "skills": {"Languages": ["..."], "Frameworks": ["..."]},
+    "certifications": ["..."],
+    "achievements": ["..."]
+  }
 }
 </OUTPUT FORMAT>
 """

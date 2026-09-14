@@ -2,7 +2,7 @@
 import asyncio
 import logging
 
-from app.llm import llm
+from app.llm import primary_llm as llm
 from app.schemas.resume import AnalyzerOutput
 from app.prompts import ANALYZER_SYSTEM_PROMPT
 from app.graph.state import ResumeAgentState

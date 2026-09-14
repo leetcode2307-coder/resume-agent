@@ -64,13 +64,10 @@ data/
 frontend/
 
 # ── Documentation / design ───────────────────────────────────
-README.md
 *.excalidraw
 demo.excalidraw
 
 # ── Misc project files ────────────────────────────────────────
 patch.py
 main.py           # root-level old Streamlit file (all-commented-out)
-pyproject.toml    # only needed for uv install, already done in builder
-uv.lock           # same
 .python-version

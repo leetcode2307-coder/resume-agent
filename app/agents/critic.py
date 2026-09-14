@@ -1,5 +1,5 @@
 import asyncio
-from app.llm import llm
+from app.llm import primary_llm as llm
 from app.prompts import CRITIC_AGENT_PROMPT
 from app.graph.state import ResumeAgentState
 from app.schemas.resume import CriticOutput  # You'll need to create this

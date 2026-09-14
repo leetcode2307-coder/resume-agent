@@ -3,7 +3,8 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     openrouter_api_key: str = ""
-    primary_model: str = "nvidia/nemotron-3-ultra-550b-a55b:free "
+    groq_api_key: str = ""
+    primary_model: str = "openai/gpt-oss-120b"
     fallback_model: str = "nvidia/nemotron-3.5-lightning:free"
     gemma_model: str = "google/gemma-4-31b-it:free"
     glm_model: str = "z-ai/glm-5.2:free"
@@ -14,12 +15,20 @@ class Settings(BaseSettings):
     langsmith_api_key: str | None = None
     langsmith_project: str = "resume-agent"
     
-    e2b_api_key:str
+    e2b_api_key: str | None = None
 
+    use_s3_storage: bool = False
+    aws_s3_bucket_name: str | None  = None    
+    aws_region: str | None  = None 
+    aws_access_key_id: str | None  = None 
+    aws_secret_access_key: str | None  = None  
 
+    supabase_jwt_secret: str | None = None
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        extra="ignore",
     )
 
 @lru_cache()

@@ -31,6 +31,7 @@ dmypy.json
 # Environment variables
 .env
 .env.*
+!.env.example
 *.env
 secrets/
 *.key
@@ -62,6 +63,7 @@ output/
 results/
 data/
 .rag_cache/
+DESIGN.md
 
 # Docker
 docker-compose.override.yml
@@ -84,3 +86,5 @@ generated_pdfs/
 
 # macOS
 .DS_Store
+patch_*.py
+scratch/

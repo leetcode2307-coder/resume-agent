@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/workflow_models.dart';
 import '../theme/app_theme.dart';
 import 'shared_widgets.dart';
@@ -16,7 +15,7 @@ class CritiqueWidget extends StatelessWidget {
     return AgentCard(
       title: 'Critique Agent',
       subtitle: 'Quality review · iteration ${latest?.rewriteIteration ?? 0}',
-      accentColor: AppTheme.accentAmber,
+      accentColor: Theme.of(context).colorScheme.primary,
       icon: Icons.rate_review_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -31,33 +30,33 @@ class CritiqueWidget extends StatelessWidget {
           // Latest feedback
           if (latest != null) ...[
             if (latest.criticFeedback.isNotEmpty) ...[
-              const SectionLabel(
+              SectionLabel(
                 text: 'Feedback',
-                color: AppTheme.accentAmber,
+                color: Theme.of(context).semantics.warning,
               ),
               ...latest.criticFeedback.map((f) => ListItem(
                     text: f,
-                    dotColor: AppTheme.accentAmber,
+                    dotColor: Theme.of(context).semantics.warning,
                     icon: Icons.lightbulb_outline_rounded,
                   )),
               const SizedBox(height: 12),
             ],
             if (latest.detectedErrors.isNotEmpty) ...[
-              const SectionLabel(
+              SectionLabel(
                 text: 'Detected Errors',
-                color: AppTheme.accentRed,
+                color: Theme.of(context).colorScheme.error,
               ),
               ...latest.detectedErrors.map((e) => ListItem(
                     text: e,
-                    dotColor: AppTheme.accentRed,
+                    dotColor: Theme.of(context).colorScheme.error,
                     icon: Icons.error_outline_rounded,
                   )),
               const SizedBox(height: 12),
             ],
             if (latest.weakPhrasing.isNotEmpty) ...[
-              const SectionLabel(
+              SectionLabel(
                 text: 'Weak Phrasing',
-                color: AppTheme.textMuted,
+                color: Theme.of(context).semantics.textTertiary,
               ),
               Wrap(
                 spacing: 6,
@@ -65,7 +64,7 @@ class CritiqueWidget extends StatelessWidget {
                 children: latest.weakPhrasing
                     .map((w) => SkillChip(
                           label: w,
-                          color: AppTheme.textMuted,
+                          color: Theme.of(context).semantics.textTertiary,
                           small: true,
                         ))
                     .toList(),
@@ -77,10 +76,9 @@ class CritiqueWidget extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Text(
                   'No critique data available.',
-                  style: GoogleFonts.inter(
-                    color: AppTheme.textMuted,
-                    fontSize: 13,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).semantics.textTertiary,
+                      ),
                 ),
               ),
             ),
@@ -97,10 +95,10 @@ class _ScoreBanner extends StatelessWidget {
 
   const _ScoreBanner({required this.score});
 
-  Color get _color {
-    if (score >= 8) return AppTheme.accentGreen;
-    if (score >= 5) return AppTheme.accentAmber;
-    return AppTheme.accentRed;
+  Color _color(BuildContext context) {
+    if (score >= 8) return Theme.of(context).semantics.success;
+    if (score >= 5) return Theme.of(context).semantics.warning;
+    return Theme.of(context).colorScheme.error;
   }
 
   String get _label {
@@ -111,19 +109,20 @@ class _ScoreBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = _color(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _color.withOpacity(0.08),
+        color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _color.withOpacity(0.3)),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
         children: [
           ScoreGauge(
             score: score * 10, // critic score is 0–10, gauge expects 0–100
             label: 'Quality',
-            color: _color,
+            color: color,
             size: 64,
           ),
           const SizedBox(width: 20),
@@ -133,19 +132,14 @@ class _ScoreBanner extends StatelessWidget {
               children: [
                 Text(
                   _label,
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: _color,
-                  ),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: color,
+                      ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Critic score: ${score.toStringAsFixed(1)} / 10',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: AppTheme.textSecondary,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
             ),
@@ -168,9 +162,9 @@ class _IterationTimeline extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionLabel(
+        SectionLabel(
           text: 'Rewrite Iterations',
-          color: AppTheme.accentCyan,
+          color: Theme.of(context).colorScheme.primary,
         ),
         const SizedBox(height: 6),
         Row(
@@ -180,19 +174,18 @@ class _IterationTimeline extends StatelessWidget {
             final score = c.criticScore;
             final color = score != null
                 ? (score >= 8
-                    ? AppTheme.accentGreen
+                    ? Theme.of(context).semantics.success
                     : score >= 5
-                        ? AppTheme.accentAmber
-                        : AppTheme.accentRed)
-                : AppTheme.textMuted;
+                        ? Theme.of(context).semantics.warning
+                        : Theme.of(context).colorScheme.error)
+                : Theme.of(context).semantics.textTertiary;
             return Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: color.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(8),
@@ -202,20 +195,14 @@ class _IterationTimeline extends StatelessWidget {
                         children: [
                           Text(
                             'Run ${i + 1}',
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              color: AppTheme.textMuted,
-                            ),
+                            style: Theme.of(context).textTheme.labelSmall,
                           ),
                           Text(
-                            score != null
-                                ? score.toStringAsFixed(1)
-                                : '–',
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: color,
-                            ),
+                            score != null ? score.toStringAsFixed(1) : '–',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: color,
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
                         ],
                       ),
@@ -227,7 +214,7 @@ class _IterationTimeline extends StatelessWidget {
           }).toList(),
         ),
         const SizedBox(height: 16),
-        const Divider(color: AppTheme.border),
+        Divider(color: Theme.of(context).dividerColor),
         const SizedBox(height: 12),
       ],
     );

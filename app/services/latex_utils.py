@@ -19,8 +19,8 @@ def escape_latex_string(text: str) -> str:
     scanner = re.Scanner([
         (r"https?://[^\s<>\"'{}|\\^`]+", lambda s, tok: ("BARE_URL", tok)),
         (r"\\[&%$#_{}]", lambda s, tok: ("ESCAPED_CHAR", tok)),
-        (r"\\href\{[^}]*\}\{", lambda s, tok: ("CMD_START", tok)),
-        (r"\\(?:textbf|textit|underline|emph|url)\{", lambda s, tok: ("CMD_START", tok)),
+        
+        (r"\\(?:textbf|textit|underline|emph|href|url)\{", lambda s, tok: ("CMD_START", tok)),
         (r"\}", lambda s, tok: ("BRACE_CLOSE", tok)),
         (r"\{", lambda s, tok: ("BRACE_OPEN", tok)),
         (r"\n+", lambda s, tok: ("NEWLINE", tok)),
@@ -124,14 +124,21 @@ def render_resume_latex(structured_resume: dict, contact_info: dict) -> str:
     
     # Build contact line
     contacts = []
-    if safe_contact.get("email"):
-        contacts.append(safe_contact["email"])
-    if safe_contact.get("phone"):
-        contacts.append(safe_contact["phone"])
-    if safe_contact.get("linkedin_url"):
-        contacts.append(safe_contact["linkedin_url"])
-    if safe_contact.get("github_url"):
-        contacts.append(safe_contact["github_url"])
+    if contact_info.get("email"):
+        escaped_email = escape_latex_string(contact_info["email"])
+        contacts.append(f"\\href{{mailto:{contact_info['email']}}}{{{escaped_email}}}")
+    if contact_info.get("phone"):
+        contacts.append(escape_latex_string(contact_info["phone"]))
+    if contact_info.get("linkedin_url") and contact_info["linkedin_url"] not in ["[LinkedIn URL]", "linkedin.com", "https://linkedin.com"]:
+        url = contact_info["linkedin_url"].replace('%', '\\%').replace('#', '\\#')
+        if not url.startswith("http"):
+            url = "https://" + url
+        contacts.append(f"\\href{{{url}}}{{LinkedIn}}")
+    if contact_info.get("github_url") and contact_info["github_url"] not in ["[GitHub URL]", "github.com", "https://github.com"]:
+        url = contact_info["github_url"].replace('%', '\\%').replace('#', '\\#')
+        if not url.startswith("http"):
+            url = "https://" + url
+        contacts.append(f"\\href{{{url}}}{{GitHub}}")
     contact_line = " | ".join(contacts)
     
     # Combine data
