@@ -44,7 +44,7 @@ flutter:
 
   assets:
     - assets/images/resume-agent-logo.png
-    - .env
+    - env.txt
 
 flutter_native_splash:
   color: "#0A0D14"

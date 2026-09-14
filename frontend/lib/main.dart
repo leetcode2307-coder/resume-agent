@@ -13,7 +13,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy();
   
-  await dotenv.load(fileName: ".env");
+  await dotenv.load(fileName: "env.txt");
   
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
