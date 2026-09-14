@@ -34,4 +34,4 @@ RUN mkdir -p generated_pdfs
 EXPOSE 8000 8501
 
 # Start Redis server, Celery worker (in background), and FastAPI server (in foreground)
-CMD ["sh", "-c", "redis-server --daemonize yes && celery -A app.celery_app worker --loglevel=info & uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "redis-server --daemonize yes && celery -A app.celery_app worker --concurrency=1 --loglevel=info & uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
