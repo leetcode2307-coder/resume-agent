@@ -31,3 +31,6 @@ RUN mkdir -p generated_pdfs
 
 # Expose ports for both FastAPI and Streamlit
 EXPOSE 8000 8501
+
+# Start the FastAPI server using Uvicorn
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
