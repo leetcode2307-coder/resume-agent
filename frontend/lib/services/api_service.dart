@@ -11,8 +11,8 @@ import '../models/workflow_models.dart';
 
 class ApiService {
   // https://resume-agent-1-lfag.onrender.com
-  // static const String _baseUrl = 'https://resume-agent-1-lfag.onrender.com';
-  static const String _baseUrl = 'http://127.0.0.1:8000';
+  static const String _baseUrl = 'https://resume-agent-1-lfag.onrender.com';
+  // static const String _baseUrl = 'http://127.0.0.1:8000';
 
   /// Streams SSE events from /workflow-result and yields parsed [WorkflowState]
   /// snapshots so the UI can react to each agent completing.
