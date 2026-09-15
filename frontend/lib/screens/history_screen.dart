@@ -131,6 +131,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                     ],
                                   ),
                                 ),
+                                IconButton(
+                                  icon: Icon(Icons.delete_outline_rounded, color: Theme.of(context).colorScheme.error),
+                                  tooltip: 'Delete Resume',
+                                  onPressed: () async {
+                                    await _service.deleteJob(job.jobId);
+                                    _loadJobs();
+                                  },
+                                ),
+                                const SizedBox(width: 8),
                                 Icon(Icons.chevron_right_rounded, color: Theme.of(context).dividerColor),
                               ],
                             ),

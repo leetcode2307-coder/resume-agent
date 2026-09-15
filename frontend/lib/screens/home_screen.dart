@@ -40,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   WorkflowState _workflow = const WorkflowState();
   StreamSubscription<WorkflowState>? _sub;
   final _api = ApiService();
+  String? _currentJobId;
 
   // UI
   bool _formExpanded = true;
@@ -48,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _currentJobId = widget.jobId;
     if (widget.jobId != null) {
       _formExpanded = false;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -131,6 +133,13 @@ class _HomeScreenState extends State<HomeScreen> {
     _api.startJob(request, token).then((jobId) async {
       // Save to history
       final historyService = JobHistoryService();
+      
+      if (_currentJobId != null) {
+        await historyService.deleteJob(_currentJobId!);
+      }
+      
+      _currentJobId = jobId;
+      
       final title = request.fullName != null && request.fullName!.isNotEmpty 
           ? '${request.fullName}\'s Resume' 
           : 'Resume Optimization';

@@ -53,4 +53,16 @@ class JobHistoryService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
   }
+
+  Future<void> deleteJob(String jobId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jobs = await getJobs();
+    
+    // Reverse it back since getJobs returns reversed for UI
+    final List<SavedJob> originalOrder = jobs.reversed.toList();
+    originalOrder.removeWhere((job) => job.jobId == jobId);
+
+    final String data = jsonEncode(originalOrder.map((e) => e.toJson()).toList());
+    await prefs.setString(_key, data);
+  }
 }
