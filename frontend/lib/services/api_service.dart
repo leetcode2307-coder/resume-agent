@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/workflow_models.dart';
 
 class ApiService {
@@ -297,9 +298,15 @@ class ApiService {
           lastProcessedEventCount = events.length;
 
           if (status == 'completed' || status == 'error') {
-            if (status == 'completed' && state.status != WorkflowStatus.completed) {
-               state = state.copyWith(status: WorkflowStatus.completed);
-               yield state;
+            if (status == 'completed') {
+               // Save to local cache for persistence across backend restarts
+               final prefs = await SharedPreferences.getInstance();
+               await prefs.setString('job_data_$jobId', response.body);
+
+               if (state.status != WorkflowStatus.completed) {
+                 state = state.copyWith(status: WorkflowStatus.completed);
+                 yield state;
+               }
             }
             if (status == 'error' && state.status != WorkflowStatus.error) {
                state = state.copyWith(status: WorkflowStatus.error, errorMessage: data['error'] as String? ?? 'Unknown backend error');
@@ -307,6 +314,32 @@ class ApiService {
             }
             break;
           }
+        } else if (response.statusCode == 404) {
+          // Attempt to fallback to local cache
+          final prefs = await SharedPreferences.getInstance();
+          final cachedBody = prefs.getString('job_data_$jobId');
+          
+          if (cachedBody != null) {
+            final data = jsonDecode(cachedBody);
+            final events = data['events'] as List<dynamic>? ?? [];
+            final inputs = data['inputs'] as Map<String, dynamic>?;
+
+            if (inputs != null && state.requestInputs == null) {
+              state = state.copyWith(requestInputs: WorkflowRequest.fromJson(inputs));
+              yield state;
+            }
+
+            for (int i = lastProcessedEventCount; i < events.length; i++) {
+              state = _applyEvent(state, events[i] as Map<String, dynamic>);
+              yield state;
+            }
+            
+            state = state.copyWith(status: WorkflowStatus.completed);
+            yield state;
+          } else {
+            yield state.copyWith(status: WorkflowStatus.error, errorMessage: 'Job not found (Backend restarted & no local cache found).');
+          }
+          break;
         } else {
           yield state.copyWith(status: WorkflowStatus.error, errorMessage: 'Failed to poll job: ${response.statusCode}');
           break;

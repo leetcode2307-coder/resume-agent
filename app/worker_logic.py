@@ -92,14 +92,15 @@ async def process_job_async(job_id: str, request: dict):
         output_path = GENERATED_PDFS_DIR / output_filename
 
         latex_code = await asyncio.to_thread(resume_builder, final_state)
-        pdf_path = await asyncio.to_thread(
-            render_latex_to_pdf,
-            latex_source=latex_code,
-            output_pdf=output_path,
-        )
+        pdf_path = None
+        # pdf_path = await asyncio.to_thread(
+        #     render_latex_to_pdf,
+        #     latex_source=latex_code,
+        #     output_pdf=output_path,
+        # )
 
-        if pdf_path:
-            await asyncio.to_thread(upload_pdf_to_s3, str(pdf_path), output_filename)
+        # if pdf_path:
+        #     await asyncio.to_thread(upload_pdf_to_s3, str(pdf_path), output_filename)
 
         final_response = {
             "event": "workflow_completed",
