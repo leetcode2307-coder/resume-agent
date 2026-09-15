@@ -234,7 +234,7 @@ def render_latex_to_pdf(
     # ------------------------------------------------------------
     # Fallback to local LaTeX execution
     # ------------------------------------------------------------
-    latex_engine = _find_executable("pdflatex")
+    latex_engine = _find_executable("xelatex") or _find_executable("pdflatex")
     if latex_engine is None:
         raise RuntimeError(
             "E2B compilation failed and local pdflatex was not found on PATH.\n\n"

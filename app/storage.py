@@ -26,7 +26,10 @@ def upload_pdf_to_s3(file_path: str, object_name: str) -> bool:
             file_path,
             S3_BUCKET_NAME,
             object_name,
-            ExtraArgs={"ContentType": "application/pdf"}
+            ExtraArgs={
+                "ContentType": "application/pdf",
+                "ContentDisposition": f'attachment; filename="{object_name}"'
+            }
         )
         logger.info(f"Uploaded {file_path} to s3://{S3_BUCKET_NAME}/{object_name}")
         return True
@@ -48,7 +51,10 @@ def upload_pdf_to_s3(file_path: str, object_name: str) -> bool:
                     file_path,
                     S3_BUCKET_NAME,
                     object_name,
-                    ExtraArgs={"ContentType": "application/pdf"}
+            ExtraArgs={
+                "ContentType": "application/pdf",
+                "ContentDisposition": f'attachment; filename="{object_name}"'
+            }
                 )
                 logger.info(f"Uploaded {file_path} to s3://{S3_BUCKET_NAME}/{object_name}")
                 return True

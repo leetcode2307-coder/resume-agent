@@ -269,11 +269,11 @@ async def workflow_result(request: Request, payload: WorkflowRequest, user = Dep
                 latex_code = await asyncio.to_thread(resume_builder, final_state)
                 
                 # No longer rendering LaTeX to PDF as per instructions
-                # pdf_path = await asyncio.to_thread(
-                #     render_latex_to_pdf,
-                #     latex_source=latex_code,
-                #     output_pdf=output_path,
-                # )
+                pdf_path = await asyncio.to_thread(
+                    render_latex_to_pdf,
+                    latex_source=latex_code,
+                    output_pdf=output_path,
+                )
 
             except Exception as exc:
                 logger.error(f"Failed to generate PDF: {exc}")

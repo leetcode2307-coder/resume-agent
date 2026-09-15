@@ -9,8 +9,8 @@ kotlin {
 }
 android {
     namespace = "com.resumeagent.frontend"
-    compileSdk = 36
-    buildToolsVersion = "36.0.0"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

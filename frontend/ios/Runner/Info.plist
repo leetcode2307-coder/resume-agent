@@ -47,6 +47,10 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>UIFileSharingEnabled</key>
+		<true/>
+		<key>LSSupportsOpeningDocumentsInPlace</key>
+		<true/>
 		<!-- Deep Links for Supabase OAuth -->
 		<key>CFBundleURLTypes</key>
 		<array>

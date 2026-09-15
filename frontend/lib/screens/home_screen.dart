@@ -309,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Tablet & Mobile view
                   return Center(
                     child: Padding(
-                      padding: const EdgeInsets.only(left: 64, right: 24, top: 16, bottom: 16),
+                      padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
