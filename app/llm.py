@@ -45,7 +45,7 @@ def _build_model(model_name: str) -> Any:
         if model_name == "fallback":
             from langchain_openai import ChatOpenAI
             return ChatOpenAI(
-                api_key=settings.xkiro_api_key,
+                api_key=settings.xkiro_api_key or "not_provided",
                 base_url="https://api.xkiro.com/v1",
                 model=_get_model_name(model_name),
                 timeout=900000,
