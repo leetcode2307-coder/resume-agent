@@ -40,8 +40,18 @@ _MODEL_ALIASES = {
 def _get_model_name(model_name: str) -> str:
     return _MODEL_ALIASES.get(model_name, model_name)
 
-
 def _build_model(model_name: str) -> Any:
+    if model_name == "fallback" or "xkiro" in getattr(settings, "xkiro_api_key", ""):
+        if model_name == "fallback":
+            from langchain_openai import ChatOpenAI
+            return ChatOpenAI(
+                api_key=settings.xkiro_api_key,
+                base_url="https://api.xkiro.com/v1",
+                model=_get_model_name(model_name),
+                timeout=900000,
+                max_retries=3,
+                callbacks=[TokenLoggingCallback()]
+            )
     return ChatOpenRouter(
         api_key=settings.openrouter_api_key,
         model=_get_model_name(model_name),

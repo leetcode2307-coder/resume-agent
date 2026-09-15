@@ -4,11 +4,12 @@ from functools import lru_cache
 class Settings(BaseSettings):
     openrouter_api_key: str = ""
     groq_api_key: str = ""
+    xkiro_api_key: str = ""
     primary_model: str = "openai/gpt-oss-120b"
-    fallback_model: str = "nvidia/nemotron-3.5-lightning:free"
-    gemma_model: str = "google/gemma-4-31b-it:free"
-    glm_model: str = "z-ai/glm-5.2:free"
-    nemotron_model: str = "nvidia/nemotron-3.5-lightning:free"
+    fallback_model: str = "deepseek/deepseek-v4-flash"
+    # gemma_model: str = "google/gemma-4-31b-it:free"
+    # glm_model: str = "z-ai/glm-5.2:free"
+    # nemotron_model: str = "nvidia/nemotron-3.5-lightning:free"
 
     langsmith_tracing: bool = False
     langsmith_endpoint: str = "https://api.smith.langchain.com"
