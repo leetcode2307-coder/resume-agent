@@ -257,13 +257,28 @@ class ApiService {
     final headers = {'Content-Type': 'application/json'};
     if (token != null) headers['Authorization'] = 'Bearer $token';
 
-    final response = await http.post(uri, headers: headers, body: jsonEncode(request.toJson()));
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['job_id'] as String;
-    } else {
-      throw Exception('Failed to start job: ${response.statusCode} ${response.body}');
+    int retries = 3;
+    while (retries > 0) {
+      try {
+        final response = await http.post(uri, headers: headers, body: jsonEncode(request.toJson()));
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return data['job_id'] as String;
+        } else {
+          throw Exception('Failed to start job: ${response.statusCode} ${response.body}');
+        }
+      } catch (e) {
+        retries--;
+        if (retries == 0) {
+          if (e.toString().contains('Failed to fetch') || e.toString().contains('ClientException') || e.toString().contains('XMLHttpRequest error')) {
+            throw Exception('Network error: The backend is likely restarting or waking up from sleep. Please wait a minute and try again.');
+          }
+          throw Exception('Error: $e');
+        }
+        await Future.delayed(const Duration(seconds: 2));
+      }
     }
+    throw Exception('Failed to connect to backend.');
   }
 
   Stream<WorkflowState> pollJob(String jobId, String? token) async* {
