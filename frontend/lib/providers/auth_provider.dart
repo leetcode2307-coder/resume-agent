@@ -11,6 +11,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
   String? get token => _supabase.auth.currentSession?.accessToken;
+  User? get user => _supabase.auth.currentUser;
 
   AuthProvider() {
     _initAuth();

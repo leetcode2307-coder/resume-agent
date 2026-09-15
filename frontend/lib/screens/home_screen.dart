@@ -327,30 +327,60 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildDrawer(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
     final isDark = themeProvider.themeMode == ThemeMode.dark;
     final primary = Theme.of(context).colorScheme.primary;
     final textPrim = Theme.of(context).textTheme.displayLarge?.color;
     final textSec = Theme.of(context).textTheme.bodyMedium?.color;
+
+    final user = authProvider.user;
+    final email = user?.email ?? 'Unknown User';
+    final metadata = user?.userMetadata ?? {};
+    final fullName = metadata['full_name'] as String?;
+    final avatarUrl = metadata['avatar_url'] as String?;
 
     return Drawer(
       backgroundColor: Theme.of(context).semantics.surfaceSecondary,
       child: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                children: [
-                  Icon(Icons.auto_awesome_rounded, color: primary, size: 28),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Resume AI',
-                    style: Theme.of(context).textTheme.headlineSmall,
+            UserAccountsDrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).semantics.surfaceSecondary,
+                border: Border(
+                  bottom: BorderSide(
+                    color: Theme.of(context).dividerColor,
                   ),
-                ],
+                ),
+              ),
+              accountName: Text(
+                fullName ?? email.split('@')[0],
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: textPrim,
+                ),
+              ),
+              accountEmail: Text(
+                email,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: textSec,
+                ),
+              ),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: primary.withOpacity(0.1),
+                backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                child: avatarUrl == null
+                    ? Text(
+                        (fullName ?? email).isNotEmpty ? (fullName ?? email)[0].toUpperCase() : 'U',
+                        style: TextStyle(
+                          color: primary,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )
+                    : null,
               ),
             ),
-            Divider(color: Theme.of(context).dividerColor, height: 1),
             ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
               leading: Icon(Icons.add_circle_outline_rounded, color: textSec, size: 22),
