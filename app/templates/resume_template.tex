@@ -1,148 +1,169 @@
 \documentclass[10pt,a4paper]{article}
 
-\usepackage[margin=0.65in]{geometry}
+% ── Page geometry ─────────────────────────────────────────────────────────────
+\usepackage[top=0.5in, bottom=0.5in, left=0.6in, right=0.6in]{geometry}
+
+% ── Core packages ─────────────────────────────────────────────────────────────
 \usepackage{enumitem}
 \usepackage{hyperref}
 \usepackage{xcolor}
+\usepackage{microtype}       % better text fitting — fewer overfull hboxes
 \usepackage{parskip}
 
-% Colors
-\definecolor{primary}{HTML}{000000}
-\definecolor{accent}{HTML}{2C3E50}
+% ── Colors ────────────────────────────────────────────────────────────────────
+\definecolor{headingblue}{HTML}{1A3A5C}
+\definecolor{linkgray}{HTML}{2C3E50}
 
 \hypersetup{
     colorlinks=true,
-    urlcolor=accent,
-    linkcolor=primary,
+    urlcolor=linkgray,
+    linkcolor=linkgray,
+    hidelinks
 }
 
-% Section formatting — titlesec-free, TeX Live 2022 compatible
+% ── Section headings (no titlesec dependency) ─────────────────────────────────
 \makeatletter
 \renewcommand{\section}{\@startsection{section}{1}{\z@}
-  {-1.5ex \@plus -0.5ex \@minus -0.2ex}
-  {0.8ex \@plus 0.2ex}
-  {\normalfont\large\bfseries\color{accent}}}
+  {-0.8ex \@plus -0.3ex \@minus -0.2ex}
+  {0.4ex \@plus 0.1ex}
+  {\normalfont\normalsize\bfseries\color{headingblue}\uppercase}}
 \makeatother
 
-\setlist[itemize]{leftmargin=*, topsep=2pt, itemsep=0pt, label=\textbullet}
+% ── List spacing ──────────────────────────────────────────────────────────────
+\setlist[itemize]{
+    leftmargin=1.4em,
+    topsep=1pt,
+    itemsep=0pt,
+    parsep=0pt,
+    partopsep=0pt,
+    label=\textbullet
+}
+
+% ── Misc ──────────────────────────────────────────────────────────────────────
 \pagestyle{empty}
 \raggedbottom
+\setlength{\parskip}{0pt}
+\setlength{\parindent}{0pt}
+
+% ── Helper: thin rule under each section ─────────────────────────────────────
+\newcommand{\sectionrule}{%
+  \vspace{-4pt}%
+  \noindent\rule{\linewidth}{0.4pt}%
+  \vspace{2pt}%
+}
 
 \begin{document}
 
+% ── Header ────────────────────────────────────────────────────────────────────
 \begin{center}
-    {\LARGE \bfseries \color{primary} \VAR{full_name}}\\[4pt]
-    \VAR{contact_line}
+    {\Large\bfseries\color{headingblue} \VAR{full_name}}\\[3pt]
+    {\small \VAR{contact_line}}
 \end{center}
+\vspace{2pt}
 
-\vspace{4pt}
-
+% ── Summary ───────────────────────────────────────────────────────────────────
 \BLOCK{ if summary }
-\section*{SUMMARY}
-\vspace{-2pt}
-\rule{\textwidth}{0.4pt}
-\vspace{4pt}
-\noindent
-\VAR{summary}
-\vspace{4pt}
+\section*{Summary}
+\sectionrule
+{\small \VAR{summary}}
+\vspace{3pt}
 \BLOCK{ endif }
 
+% ── Experience ────────────────────────────────────────────────────────────────
 \BLOCK{ if experience }
-\section*{EXPERIENCE}
-\vspace{-2pt}
-\rule{\textwidth}{0.4pt}
-\vspace{4pt}
+\section*{Experience}
+\sectionrule
 
 \BLOCK{ for exp in experience }
-\noindent \textbf{\VAR{exp.role}} \hfill \textit{\BLOCK{ if exp.start_date }\VAR{exp.start_date} -- \BLOCK{ endif }\VAR{exp.end_date}}\\
-\noindent \textit{\VAR{exp.company}}\BLOCK{ if exp.location }, \VAR{exp.location}\BLOCK{ endif }
+\noindent
+\textbf{\VAR{exp.role}}\hfill
+{\small\textit{\BLOCK{ if exp.start_date }\VAR{exp.start_date} -- \BLOCK{ endif }\VAR{exp.end_date}}}\\[-2pt]
+{\small\textit{\VAR{exp.company}}\BLOCK{ if exp.location }, \VAR{exp.location}\BLOCK{ endif }}
 \BLOCK{ if exp.bullets }
-\begin{itemize}
-\BLOCK{ for bullet in exp.bullets }
-    \item \VAR{bullet}
+\begin{itemize}[topsep=1pt]
+\BLOCK{ for bullet in exp.bullets[:4] }
+    \item {\small \VAR{bullet}}
 \BLOCK{ endfor }
 \end{itemize}
 \BLOCK{ endif }
-\vspace{4pt}
+\vspace{2pt}
 \BLOCK{ endfor }
 \BLOCK{ endif }
 
+% ── Projects ──────────────────────────────────────────────────────────────────
 \BLOCK{ if projects }
-\section*{PROJECTS}
-\vspace{-2pt}
-\rule{\textwidth}{0.4pt}
-\vspace{4pt}
+\section*{Projects}
+\sectionrule
 
-\BLOCK{ for proj in projects }
-\noindent \textbf{\VAR{proj.name}} \hfill \textit{\VAR{proj.technologies|join(', ')}}\\
+\BLOCK{ for proj in projects[:3] }
+\noindent
+\textbf{\VAR{proj.name}}\BLOCK{ if proj.technologies } --- {\small\textit{\VAR{proj.technologies|join(', ')}}}\BLOCK{ endif }
 \BLOCK{ if proj.description }
-\noindent \VAR{proj.description}
+\\[-2pt]{\small \VAR{proj.description}}
 \BLOCK{ endif }
 \BLOCK{ if proj.bullets }
-\begin{itemize}
-\BLOCK{ for bullet in proj.bullets }
-    \item \VAR{bullet}
+\begin{itemize}[topsep=1pt]
+\BLOCK{ for bullet in proj.bullets[:3] }
+    \item {\small \VAR{bullet}}
 \BLOCK{ endfor }
 \end{itemize}
 \BLOCK{ endif }
-\vspace{4pt}
+\vspace{2pt}
 \BLOCK{ endfor }
 \BLOCK{ endif }
 
+% ── Education ─────────────────────────────────────────────────────────────────
 \BLOCK{ if education }
-\section*{EDUCATION}
-\vspace{-2pt}
-\rule{\textwidth}{0.4pt}
-\vspace{4pt}
+\section*{Education}
+\sectionrule
 
 \BLOCK{ for edu in education }
-\noindent \textbf{\VAR{edu.degree}} \hfill \textit{\BLOCK{ if edu.start_date }\VAR{edu.start_date} -- \BLOCK{ endif }\VAR{edu.end_date}}\\
-\noindent \textit{\VAR{edu.institution}}\BLOCK{ if edu.location }, \VAR{edu.location}\BLOCK{ endif }
+\noindent
+\textbf{\VAR{edu.degree}}\hfill
+{\small\textit{\BLOCK{ if edu.start_date }\VAR{edu.start_date} -- \BLOCK{ endif }\VAR{edu.end_date}}}\\[-2pt]
+{\small\textit{\VAR{edu.institution}}\BLOCK{ if edu.location }, \VAR{edu.location}\BLOCK{ endif }}
 \BLOCK{ if edu.details }
-\begin{itemize}
-\BLOCK{ for detail in edu.details }
-    \item \VAR{detail}
+\begin{itemize}[topsep=1pt]
+\BLOCK{ for detail in edu.details[:2] }
+    \item {\small \VAR{detail}}
 \BLOCK{ endfor }
 \end{itemize}
 \BLOCK{ endif }
-\vspace{4pt}
+\vspace{2pt}
 \BLOCK{ endfor }
 \BLOCK{ endif }
 
+% ── Skills ────────────────────────────────────────────────────────────────────
 \BLOCK{ if skills }
-\section*{SKILLS}
-\vspace{-2pt}
-\rule{\textwidth}{0.4pt}
-\vspace{4pt}
-\begin{itemize}
+\section*{Skills}
+\sectionrule
+\begin{itemize}[topsep=1pt,itemsep=0pt]
 \BLOCK{ for category, skill_list in skills.items() }
-    \item \textbf{\VAR{category}}: \VAR{skill_list|join(', ')}
+    \item {\small\textbf{\VAR{category}}:\ \VAR{skill_list|join(', ')}}
 \BLOCK{ endfor }
 \end{itemize}
-\vspace{4pt}
+\vspace{2pt}
 \BLOCK{ endif }
 
+% ── Certifications ────────────────────────────────────────────────────────────
 \BLOCK{ if certifications }
-\section*{CERTIFICATIONS}
-\vspace{-2pt}
-\rule{\textwidth}{0.4pt}
-\vspace{4pt}
-\begin{itemize}
+\section*{Certifications}
+\sectionrule
+\begin{itemize}[topsep=1pt,itemsep=0pt]
 \BLOCK{ for cert in certifications }
-    \item \VAR{cert}
+    \item {\small \VAR{cert}}
 \BLOCK{ endfor }
 \end{itemize}
-\vspace{4pt}
+\vspace{2pt}
 \BLOCK{ endif }
 
+% ── Achievements ─────────────────────────────────────────────────────────────
 \BLOCK{ if achievements }
-\section*{ACHIEVEMENTS}
-\vspace{-2pt}
-\rule{\textwidth}{0.4pt}
-\vspace{4pt}
-\begin{itemize}
+\section*{Achievements}
+\sectionrule
+\begin{itemize}[topsep=1pt,itemsep=0pt]
 \BLOCK{ for ach in achievements }
-    \item \VAR{ach}
+    \item {\small \VAR{ach}}
 \BLOCK{ endfor }
 \end{itemize}
 \BLOCK{ endif }

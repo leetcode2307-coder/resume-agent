@@ -5,11 +5,11 @@ FROM python:3.12-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     texlive-xetex \
     texlive-fonts-recommended \
+    texlive-fonts-extra \
     texlive-plain-generic \
     texlive-latex-recommended \
     texlive-latex-extra \
     curl \
-    redis-server \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv for fast dependency management
@@ -30,8 +30,8 @@ COPY . .
 # Create directory for generated PDFs
 RUN mkdir -p generated_pdfs
 
-# Expose ports for both FastAPI and Streamlit
-EXPOSE 8000 8501
+# Expose FastAPI port
+EXPOSE 8000
 
-# Start Redis server, Celery worker (in background), and FastAPI server (in foreground)
-CMD ["sh", "-c", "redis-server --daemonize yes && celery -A app.celery_app worker --concurrency=1 --loglevel=info & uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Start Celery worker (background) and FastAPI server (foreground)
+CMD ["sh", "-c", "celery -A app.celery_app worker --concurrency=1 --loglevel=info & uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

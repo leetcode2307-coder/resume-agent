@@ -4,31 +4,21 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
+.venv/
 venv/
+env/
 ENV/
-.venv
 pip-log.txt
-pip-delete-this-directory.txt
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
 .mypy_cache/
 .dmypy.json
-dmypy.json
 .pyre/
 .pytype/
 
-# IDE
-.vscode/
-.idea/
-*.iml
-*.swp
-*.swo
-.DS_Store
-
-# Environment variables
+# Environment & secrets
 .env
 .env.*
 !.env.example
@@ -37,11 +27,17 @@ secrets/
 *.key
 *.pem
 *.crt
-
-# OpenRouter API keys
 openrouter_key.txt
 api_key.txt
 *.api.key
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+.DS_Store
 
 # Logs
 *.log
@@ -52,39 +48,48 @@ logs/
 *.sqlite
 *.sqlite3
 
-# Temporary files
+# Temp
 tmp/
 temp/
 *.tmp
 *.temp
+scratch/
 
-# Project specific
+# Project-specific generated output
+generated_pdfs/
 output/
 results/
 data/
 .rag_cache/
-DESIGN.md
 
-# Docker
-docker-compose.override.yml
-
-# Don't commit lock files for libraries that don't use them
-# (keep this uncommented if using pip with requirements.txt)
-# requirements.txt.lock
-# Generated Output
-generated_pdfs/
+# PDF & LaTeX build artifacts
 *.pdf
-
-# LaTeX Build Artifacts
 *.aux
 *.out
-*.log
 *.fls
 *.fdb_latexmk
 *.synctex.gz
 *.toc
 
+# Dev/scratch scripts (not part of project)
+patch*.py
+test_*.py
+test.tex
+main.py
+demo.excalidraw
+
+# Docker override
+docker-compose.override.yml
+
+# Flutter / Dart
+frontend/build/
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.packages
+frontend/.pub-cache/
+frontend/pubspec.lock
+frontend/*.iml
+
 # macOS
 .DS_Store
-patch_*.py
-scratch/

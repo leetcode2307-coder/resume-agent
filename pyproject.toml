@@ -1,11 +1,10 @@
 [project]
 name = "resume-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-powered resume optimization agent"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "e2b>=2.0.0",
     "fastapi>=0.141.1",
     "langchain>=1.3.15",
     "langchain-community>=0.4.2",
@@ -15,22 +14,17 @@ dependencies = [
     "langchain-openrouter>=0.2.7",
     "langgraph>=1.2.11",
     "mdclense>=0.1.2",
-    "pandas>=3.0.5",
-    "pip>=26.2.1",
-    "plotly>=6.9.0",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.15.0",
     "python-dotenv>=1.2.2",
     "python-multipart>=0.0.32",
     "requests>=2.34.2",
-    "streamlit>=1.61.1",
-    "streamlit-option-menu>=0.4.0",
     "uvicorn>=0.52.3",
-    "weasyprint>=69.0",
     "celery>=5.3.6",
     "boto3>=1.34.0",
     "redis>=5.0.1",
     "PyJWT>=2.8.0",
     "supabase>=2.3.0",
     "slowapi>=0.1.9",
+    "jinja2>=3.1.0",
 ]

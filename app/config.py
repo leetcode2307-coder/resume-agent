@@ -15,8 +15,6 @@ class Settings(BaseSettings):
     langsmith_endpoint: str = "https://api.smith.langchain.com"
     langsmith_api_key: str | None = None
     langsmith_project: str = "resume-agent"
-    
-    e2b_api_key: str | None = None
 
     use_s3_storage: bool = False
     aws_s3_bucket_name: str | None  = None    
