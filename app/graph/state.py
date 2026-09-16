@@ -59,6 +59,15 @@ class ResumeAgentState(TypedDict):
     quality_threshold: float
 
     # =========================
+    # BEST ATTEMPT TRACKING (To prevent degradation)
+    # =========================
+    best_critic_score: float | None
+    best_rewritten_resume: str | None
+    best_rewritten_bullet_points: List[str] | None
+    best_cover_letter: str | None
+    best_structured_resume: dict | None
+
+    # =========================
     # FINAL OUTPUT
     # =========================
     interview_questions: List[str]

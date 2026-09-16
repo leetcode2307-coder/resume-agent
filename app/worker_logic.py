@@ -93,16 +93,29 @@ async def process_job_async(job_id: str, request: dict):
 
         latex_code = await asyncio.to_thread(resume_builder, final_state)
         pdf_path = None
-        try:
-            pdf_path = await asyncio.to_thread(
-                render_latex_to_pdf,
-                latex_source=latex_code,
-                output_pdf=output_path,
-            )
-            if pdf_path:
-                await asyncio.to_thread(upload_pdf_to_s3, str(pdf_path), output_filename)
-        except Exception as pdf_exc:
-            logger.warning(f"PDF generation failed (latex_code still preserved): {pdf_exc}")
+        
+        # Try generating PDF up to 3 times, auto-fixing LaTeX errors if they occur
+        for attempt in range(3):
+            try:
+                pdf_path = await asyncio.to_thread(
+                    render_latex_to_pdf,
+                    latex_source=latex_code,
+                    output_pdf=output_path,
+                )
+                if pdf_path:
+                    await asyncio.to_thread(upload_pdf_to_s3, str(pdf_path), output_filename)
+                break  # Success
+            except RuntimeError as pdf_exc:
+                error_msg = str(pdf_exc)
+                logger.warning(f"PDF generation failed on attempt {attempt + 1}: {error_msg}")
+                if attempt < 2:
+                    from app.resume_builder_tool import fix_latex
+                    latex_code = fix_latex(latex_code, error_msg)
+                else:
+                    logger.error("Failed to generate PDF after 3 attempts.")
+            except Exception as pdf_exc:
+                logger.warning(f"PDF generation failed due to unknown error: {pdf_exc}")
+                break
 
         final_response = {
             "event": "workflow_completed",

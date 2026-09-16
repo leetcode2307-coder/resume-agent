@@ -65,6 +65,7 @@ def _run_xelatex(engine: str, tex_file: Path, out_dir: Path) -> subprocess.Compl
         text=True,
         timeout=LATEX_TIMEOUT,
         cwd=str(out_dir),
+        stdin=subprocess.DEVNULL,
     )
 
 

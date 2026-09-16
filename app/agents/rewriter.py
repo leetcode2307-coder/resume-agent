@@ -35,6 +35,20 @@ class Rewriter:
         # Invoking the required fields from the llm using with_structured_output
         structured_llm = llm.with_structured_output(RewriterOutput)
 
+        best_attempt_context = ""
+        best_score = state.get("best_critic_score")
+        if best_score is not None:
+            best_attempt_context = f"""
+        ========================
+        PREVIOUS BEST ATTEMPT (Score: {best_score}/10)
+        ========================
+        Your previous best rewrite scored {best_score}/10. 
+        Improve upon this version by addressing the feedback. DO NOT degrade the quality or lose good additions!
+        
+        Previous Best Resume:
+        {state.get('best_rewritten_resume', 'N/A')}
+        """
+
         prompt = f"""
         Rewrite and improve the resume based on the job description and analysis.
 
@@ -81,7 +95,7 @@ class Rewriter:
         Critic Feedback: {state.get('critic_feedback', [])}
         Detected Errors: {state.get('detected_errors', [])}
         Weak Phrasing: {state.get('weak_phrasing', [])}
-
+{best_attempt_context}
 
         ========================
         TASK

@@ -60,14 +60,19 @@ def fix_latex(latex_code: str, error_message: str) -> str:
     import re
     fixed_code = latex_code
     
-    if "Misplaced alignment tab character" in error_message or "unescaped special characters" in error_message:
-        # A fallback if escaping somehow failed: find bare ampersands not following a backslash
-        # Note: In a real scenario, escape_latex should have handled this, but this is a defense-in-depth repair.
-        # Use negative lookbehind for \
+    if "Misplaced alignment tab character" in error_message or "unescaped special characters" in error_message or "alignment" in error_message:
         fixed_code = re.sub(r'(?<!\\)&', r'\&', fixed_code)
         
-    if "Missing $ inserted" in error_message or "Missing { inserted" in error_message:
-        # Escaping bare underscores
+    if "Missing $ inserted" in error_message or "Missing { inserted" in error_message or "math" in error_message:
         fixed_code = re.sub(r'(?<!\\)_', r'\_', fixed_code)
+        fixed_code = re.sub(r'(?<!\\)\$', r'\$', fixed_code)
         
+    if "File ended while scanning use of" in error_message or "Paragraph ended before" in error_message:
+        # Usually caused by unescaped % commenting out the rest of the line/brace
+        fixed_code = re.sub(r'(?<!\\)%', r'\%', fixed_code)
+        
+    # Catch-all for common unescaped characters if the error mentions them
+    if "command" in error_message or "macro" in error_message:
+        fixed_code = re.sub(r'(?<!\\)#', r'\#', fixed_code)
+
     return fixed_code

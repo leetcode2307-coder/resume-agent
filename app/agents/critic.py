@@ -111,13 +111,29 @@ class CriticAgent:
         if not isinstance(payload, dict):
             payload = getattr(result, "__dict__", {})
 
-        return {
-            'critic_score': payload.get('critic_score'),
+        current_score = payload.get('critic_score')
+        best_score = state.get('best_critic_score')
+
+        updates = {
+            'critic_score': current_score,
             'critic_feedback': payload.get('critic_feedback', []),
             'detected_errors': payload.get('detected_errors', []),
             'weak_phrasing': payload.get('weak_phrasing', []),
             'cover_letter': state.get('cover_letter'),
             'rewrite_iteration': state.get('rewrite_iteration', 0) + 1
         }
+
+        # Track the best attempt to prevent degradation
+        if current_score is not None:
+            if best_score is None or current_score > best_score:
+                updates.update({
+                    'best_critic_score': current_score,
+                    'best_rewritten_resume': state.get('rewritten_resume'),
+                    'best_rewritten_bullet_points': state.get('rewritten_bullet_points'),
+                    'best_cover_letter': state.get('cover_letter'),
+                    'best_structured_resume': state.get('structured_resume'),
+                })
+
+        return updates
 
 critic_agent = CriticAgent()

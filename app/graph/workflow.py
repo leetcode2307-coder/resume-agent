@@ -30,12 +30,28 @@ def should_rewrite(state: ResumeAgentState) -> list[str]:
 
 
 def should_continue_rewriting(state: ResumeAgentState) -> str:
-    """Check whether the resume should keep rewriting or move to END."""
+    """Check whether the resume should keep rewriting or move to finalize."""
     if state.get("rewrite_iteration", 0) >= state.get("max_rewrite_iterations", 0):
-        return END
+        return "finalize_node"
     if state.get("critic_score") is not None and state.get("critic_score", 0) >= state.get("quality_threshold", 0):
-        return END
+        return "finalize_node"
     return "rewriter_node"
+
+
+def finalize_node(state: ResumeAgentState):
+    """Restore the best rewriting attempt if the final one was degraded."""
+    best_score = state.get("best_critic_score")
+    current_score = state.get("critic_score")
+    
+    if best_score is not None and current_score is not None and best_score > current_score:
+        return {
+            "critic_score": best_score,
+            "rewritten_resume": state.get("best_rewritten_resume"),
+            "rewritten_bullet_points": state.get("best_rewritten_bullet_points", []),
+            "cover_letter": state.get("best_cover_letter"),
+            "structured_resume": state.get("best_structured_resume"),
+        }
+    return {}
 
 
 def _build_workflow():
@@ -45,6 +61,7 @@ def _build_workflow():
     graph.add_node("analyzer_node", analyzer.analyzer_node)
     graph.add_node("rewriter_node", rewriter.rewriter_node)
     graph.add_node("critic_agent", critic_agent.critic_node)
+    graph.add_node("finalize_node", finalize_node)
     graph.add_node("interview_agent", interviewer.interview_agent)
 
     graph.add_edge(START, "input_node")
@@ -61,9 +78,10 @@ def _build_workflow():
     graph.add_conditional_edges(
         "critic_agent",
         should_continue_rewriting,
-        {"rewriter_node": "rewriter_node", END: END},
+        {"rewriter_node": "rewriter_node", "finalize_node": "finalize_node"},
     )
 
+    graph.add_edge("finalize_node", END)
     graph.add_edge("interview_agent", END)
     return graph.compile()
 
