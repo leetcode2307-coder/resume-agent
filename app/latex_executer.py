@@ -194,51 +194,72 @@ def render_latex_to_pdf(
         raise ValueError("LaTeX source cannot be empty.")
 
     output_pdf = Path(output_pdf).expanduser().resolve()
-    
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Try E2B cloud sandbox (e2b >= 2.x API)
+    # ──────────────────────────────────────────────────────────────────────────
     try:
         from app.config import settings
         import e2b
-        
+
         if settings.e2b_api_key:
-            # We attempt E2B first
-            # The user must build a custom template named 'latex-resume-env' via E2B CLI.
-            # E2B Sandbox automatically loads the API key from E2B_API_KEY env if not explicitly passed,
-            # but we pass it just to be safe.
-            with e2b.Sandbox(template="latex-resume-env", api_key=settings.e2b_api_key) as sandbox:
+            sandbox = None
+            try:
+                # e2b v2: Sandbox.create() is the factory classmethod
+                # 'template' is the sandbox template id or name
+                sandbox = e2b.Sandbox.create(
+                    template="latex-resume-env",
+                    api_key=settings.e2b_api_key,
+                    timeout=LATEX_TIMEOUT + 30,
+                )
+
+                # Write the .tex file
                 sandbox.files.write("/home/user/document.tex", latex_source)
-                
-                process = sandbox.process.start_and_wait(
+
+                # Run xelatex — returns a CommandHandle; call .wait() for result
+                handle = sandbox.commands.run(
                     "xelatex -interaction=nonstopmode -halt-on-error /home/user/document.tex",
                     cwd="/home/user",
-                    timeout=LATEX_TIMEOUT
+                    timeout=float(LATEX_TIMEOUT),
                 )
-                
-                if process.exit_code != 0:
-                    raw_log = process.stdout + "\n" + process.stderr
-                    # Try to parse concise error for nicer UI
-                    tex_path = Path("/home/user/document.tex") # dummy path for parser
+                result = handle.wait()
+
+                if result.exit_code != 0:
+                    raw_log = (result.stdout or "") + "\n" + (result.stderr or "")
+                    tex_path = Path("/home/user/document.tex")
                     concise = _parse_detailed_error(raw_log, tex_path)
                     raise RuntimeError(f"E2B LaTeX compilation failed:\n{concise}")
-                
-                pdf_bytes = sandbox.files.read_bytes("/home/user/document.pdf")
-                
+
+                # Read the generated PDF — use format='bytes' (no read_bytes in v2)
+                pdf_bytes = sandbox.files.read("/home/user/document.pdf", format="bytes")
+
                 output_pdf.parent.mkdir(parents=True, exist_ok=True)
                 with open(output_pdf, "wb") as f:
                     f.write(pdf_bytes)
-                    
-            return output_pdf
+
+                return output_pdf
+
+            finally:
+                if sandbox is not None:
+                    try:
+                        sandbox.kill()
+                    except Exception:
+                        pass
+
     except Exception as e:
         import logging
-        logging.getLogger(__name__).warning(f"E2B compilation failed or is unconfigured: {e}. Falling back to local execution.")
+        logging.getLogger(__name__).warning(
+            f"E2B compilation failed or is unconfigured: {e}. Falling back to local execution."
+        )
 
-    # ------------------------------------------------------------
+    # ──────────────────────────────────────────────────────────────────────────
     # Fallback to local LaTeX execution
-    # ------------------------------------------------------------
+    # ──────────────────────────────────────────────────────────────────────────
     latex_engine = _find_executable("xelatex") or _find_executable("pdflatex")
     if latex_engine is None:
         raise RuntimeError(
-            "E2B compilation failed and local pdflatex was not found on PATH.\n\n"
-            "Install TeX Live locally or configure E2B properly."
+            "E2B compilation failed and no local xelatex/pdflatex was found on PATH.\n\n"
+            "Install TeX Live locally or configure E2B_API_KEY properly."
         )
 
     with tempfile.TemporaryDirectory(prefix="resume_latex_") as temp_dir:
@@ -267,122 +288,3 @@ def render_latex_to_pdf(
         shutil.copy2(generated_pdf, output_pdf)
 
     return output_pdf
-
-# from pathlib import Path
-# from your_module_name import render_latex_to_pdf  # Replace with actual module name
-
-# Your LaTeX document
-# latex_document = r"""
-# \documentclass[11pt,a4paper]{article}
-# \usepackage[margin=0.7in]{geometry}
-# \usepackage{enumitem}
-# \usepackage{titlesec}
-# \usepackage{hyperref}
-# \usepackage{fontawesome5}
-# \usepackage{xcolor}
-# \usepackage{parskip}
-# \usepackage{ragged2e}
-
-# \definecolor{primary}{HTML}{2C3E50}
-# \definecolor{secondary}{HTML}{34495E}
-# \definecolor{accent}{HTML}{3498DB}
-# \definecolor{text}{HTML}{2C3E50}
-# \definecolor{muted}{HTML}{7F8C8D}
-
-# \hypersetup{
-#     colorlinks=true,
-#     urlcolor=accent,
-#     linkcolor=primary,
-#     pdfauthor={},
-#     pdfsubject={Software Developer Resume},
-#     pdfkeywords={Python, FastAPI, SQL, Docker, Software Development}
-# }
-
-# \titleformat{\section}{\large\bfseries\color{primary}}{}{0em}{}[\titlerule]
-# \titlespacing{\section}{0pt}{12pt}{6pt}
-
-# \setlist[itemize]{leftmargin=*, topsep=2pt, itemsep=2pt, label=\textbullet}
-# \setlist[description]{leftmargin=!, labelwidth=2.5cm, font=\normalfont\bfseries\color{secondary}}
-
-# \pagestyle{empty}
-# \raggedbottom
-
-# \begin{document}
-
-# \begin{center}
-#     {\LARGE \bfseries \color{primary} Full Name}\\[6pt]
-#     {\color{muted} \faMapMarker\hspace{2pt} City, Country \quad 
-#     \faPhone\hspace{2pt} +XX XXX XXXX \quad 
-#     \faEnvelope\hspace{2pt} \href{mailto:email@example.com}{email@example.com} \quad 
-#     \faLinkedin\hspace{2pt} \href{https://linkedin.com/in/username}{linkedin.com/in/username} \quad 
-#     \faGithub\hspace{2pt} \href{https://github.com/username}{github.com/username}}
-# \end{center}
-
-# \vspace{4pt}
-
-# \section*{Professional Summary}
-# \noindent Junior Software Developer with a Computer Science degree and approximately two years of professional experience. Practical exposureto Python, FastAPI (one project), SQL, and Docker. Familiar with LangGraph through tutorial work. Strong foundation in clean code principles,debugging, and collaborative problem-solving. Eager to contribute and grow in a backend-focused development role.
-
-# \section*{Technical Skills}
-# \begin{description}
-#     \item[Languages] Python (proficient), SQL (basic), HTML/CSS, JavaScript (basics)
-#     \item[Frameworks] FastAPI (project-level experience), LangGraph (tutorial-level)
-#     \item[Tools] Docker (basic usage), Git, VS Code, Linux CLI
-#     \item[Databases] PostgreSQL (basic), SQLite
-#     \item[Concepts] REST APIs, Clean Code, Debugging, Unit Testing (pytest), Agile/Scrum basics
-# \end{description}
-
-# \section*{Experience}
-# \noindent \textbf{Software Developer Intern / Junior Developer} \hfill \textit{Month 20XX -- Present}\\
-# \noindent \textit{Company Name, Location}\\
-# \begin{itemize}
-#     \item Contributed to a small FastAPI-based backend service: implemented CRUD endpoints, integrated with PostgreSQL, and wrote basic unit tests.
-#     \item Wrote and maintained SQL queries for data retrieval and reporting; optimized a few slow queries under supervision.
-#     \item Used Docker to containerize the development environment; built and ran images locally.
-#     \item Collaborated in a small team using Git (feature branches, pull requests) and participated in daily stand-ups.
-#     \item Debugged production issues, added logging, and improved error handling in existing Python modules.
-# \end{itemize}
-
-# \vspace{4pt}
-# \noindent \textbf{Relevant Project: FastAPI Task Manager} \hfill \textit{Personal / Academic}\\
-# \begin{itemize}
-#     \item Designed and built a REST API with FastAPI for task management (create, read, update, delete, status transitions).
-#     \item Implemented JWT-based authentication and role-based access control.
-#     \item Used SQLAlchemy with PostgreSQL; wrote migrations with Alembic.
-#     \item Containerized the application with Docker and Docker Compose for local development.
-#     \item Achieved ~80\% test coverage with pytest; documented endpoints with OpenAPI/Swagger.
-# \end{itemize}
-
-# \vspace{4pt}
-# \noindent \textbf{Learning Exercise: LangGraph Agent Tutorial} \hfill \textit{Self-directed}\\
-# \begin{itemize}
-#     \item Completed the official LangGraph tutorial to build a simple ReAct-style agent with tool use.
-#     \item Explored state graphs, conditional edges, and checkpointing concepts.
-#     \item Gained familiarity with LangChain ecosystem basics (LLM integration, prompt templates).
-# \end{itemize}
-
-# \section*{Education}
-# \noindent \textbf{Bachelor of Science in Computer Science} \hfill \textit{20XX -- 20XX}\\
-# \noindent \textit{University Name, Location}\\
-# Relevant coursework: Data Structures \& Algorithms, Databases, Operating Systems, Computer Networks, Software Engineering, Object-Oriented Programming.
-
-# \section*{Additional}
-# \begin{itemize}
-#     \item Strong analytical mindset; enjoys reading source code to understand internals.
-#     \item Quick learner — comfortable picking up new libraries and frameworks via documentation.
-#     \item Effective communicator in cross-functional settings; values code reviews and knowledge sharing.
-#     \item English: Professional working proficiency.
-# \end{itemize}
-
-# \end{document}
-# """
-
-# # Render to PDF
-# try:
-#     pdf_path = render_latex_to_pdf(
-#         latex_source=latex_document,
-#         output_pdf = Path.home() / "Downloads" / "document.pdf"
-#     )
-#     print(f"PDF successfully created at: {pdf_path}")
-# except Exception as e:
-#     print(f"Error: {e}")
