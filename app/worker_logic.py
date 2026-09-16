@@ -45,10 +45,10 @@ async def process_job_async(job_id: str, request: dict):
         if job_data_str:
             job_data = json.loads(job_data_str)
             job_data["status"] = "running"
-            await redis_client.set(f"job:{job_id}", json.dumps(job_data))
+            await redis_client.set(f"job:{job_id}", json.dumps(job_data), ex=7200)
         else:
             job_data = {"status": "running", "events": [], "result": None, "error": None}
-            await redis_client.set(f"job:{job_id}", json.dumps(job_data))
+            await redis_client.set(f"job:{job_id}", json.dumps(job_data), ex=7200)
 
         async for event in workflow_result_async(
             resume_text=request.get("resume_text", ""),
@@ -69,13 +69,13 @@ async def process_job_async(job_id: str, request: dict):
             if event.get("event") == "workflow_error":
                 job_data["status"] = "error"
                 job_data["error"] = event.get("error")
-                await redis_client.set(f"job:{job_id}", json.dumps(job_data))
+                await redis_client.set(f"job:{job_id}", json.dumps(job_data), ex=7200)
                 return
 
             if event.get("event") == "workflow_state_ready":
                 final_state = dict(event.get("data", {}).get("state", {}))
                 
-            await redis_client.set(f"job:{job_id}", json.dumps(job_data))
+            await redis_client.set(f"job:{job_id}", json.dumps(job_data), ex=7200)
                 
         if not final_state:
             final_state = {}
@@ -120,7 +120,7 @@ async def process_job_async(job_id: str, request: dict):
         job_data["events"].append(final_response)
         job_data["result"] = final_response["data"]
         job_data["status"] = "completed"
-        await redis_client.set(f"job:{job_id}", json.dumps(job_data))
+        await redis_client.set(f"job:{job_id}", json.dumps(job_data), ex=7200)
 
     except Exception as exc:
         logger.exception(f"Job {job_id} failed")
@@ -128,6 +128,6 @@ async def process_job_async(job_id: str, request: dict):
         job_data = json.loads(job_data_str) if job_data_str else {"status": "error", "events": []}
         job_data["status"] = "error"
         job_data["error"] = str(exc)
-        await redis_client.set(f"job:{job_id}", json.dumps(job_data))
+        await redis_client.set(f"job:{job_id}", json.dumps(job_data), ex=7200)
     finally:
         await redis_client.aclose()

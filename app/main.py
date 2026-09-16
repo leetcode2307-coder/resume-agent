@@ -174,9 +174,11 @@ async def create_job(request: Request, payload: WorkflowRequest, user = Depends(
         "inputs": payload.model_dump(),
         "events": [],
         "result": None,
-        "error": None
+        "error": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    await redis_client.set(f"job:{job_id}", json.dumps(job_data))
+    # TTL of 2 hours — expired/zombie jobs are auto-cleaned from Redis
+    await redis_client.set(f"job:{job_id}", json.dumps(job_data), ex=7200)
     
     # Queue the Celery task
     run_workflow_task.delay(job_id, payload.model_dump())
@@ -189,7 +191,27 @@ async def get_job(request: Request, job_id: str, user = Depends(get_current_user
     job_data_str = await redis_client.get(f"job:{job_id}")
     if not job_data_str:
         raise HTTPException(404, "Job not found")
-    return json.loads(job_data_str)
+    job_data = json.loads(job_data_str)
+
+    # Auto-timeout: if job is stuck in running/pending for >10 minutes, mark it as error
+    if job_data.get("status") in ("running", "pending"):
+        created_at_str = job_data.get("created_at")
+        if created_at_str:
+            try:
+                from datetime import timedelta
+                created_at = datetime.fromisoformat(created_at_str)
+                age = datetime.now(timezone.utc) - created_at
+                if age > timedelta(minutes=10):
+                    job_data["status"] = "error"
+                    job_data["error"] = (
+                        "Job timed out after 10 minutes. "
+                        "The worker may have crashed. Please try again."
+                    )
+                    await redis_client.set(f"job:{job_id}", json.dumps(job_data), ex=3600)
+            except Exception:
+                pass
+
+    return job_data
 
 @app.post("/workflow-result")
 @limiter.limit("5/minute")

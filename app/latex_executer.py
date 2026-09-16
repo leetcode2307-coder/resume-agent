@@ -248,9 +248,21 @@ def render_latex_to_pdf(
 
     except Exception as e:
         import logging
-        logging.getLogger(__name__).warning(
-            f"E2B compilation failed or is unconfigured: {e}. Falling back to local execution."
-        )
+        _e2b_log = logging.getLogger(__name__)
+        err_str = str(e)
+        # 404 means the template doesn't exist — log at DEBUG, not WARNING
+        # (operator needs to create the template or remove E2B_API_KEY)
+        if "404" in err_str or "not found" in err_str.lower():
+            _e2b_log.debug(
+                f"E2B template 'latex-resume-env' not found (404). "
+                f"Falling back to local xelatex. "
+                f"To use E2B, create the template via 'e2b template build'. "
+                f"To silence this, remove E2B_API_KEY from environment."
+            )
+        else:
+            _e2b_log.warning(
+                f"E2B compilation failed: {e}. Falling back to local execution."
+            )
 
     # ──────────────────────────────────────────────────────────────────────────
     # Fallback to local LaTeX execution
