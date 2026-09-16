@@ -49,14 +49,14 @@ def _build_model(model_name: str) -> Any:
                 base_url="https://api.xkiro.com/v1",
                 model=_get_model_name(model_name),
                 timeout=900000,
-                max_retries=3,
+                max_retries=5,
                 callbacks=[TokenLoggingCallback()]
             )
     return ChatOpenRouter(
         api_key=settings.openrouter_api_key,
         model=_get_model_name(model_name),
         timeout=900000, 
-        max_retries=3,
+        max_retries=5,
         callbacks=[TokenLoggingCallback()]
     )
 
@@ -88,15 +88,16 @@ class _ModelChain:
     def invoke(self, messages):
         import time
         last_error = None
-        for attempt in range(3):
+        max_attempts = 5
+        for attempt in range(max_attempts):
             for model in self.models:
                 try:
                     return model.invoke(messages)
                 except Exception as exc:  # pragma: no cover - fallback path
                     last_error = exc
                     logger.warning(f"Model invoke failed: {_format_error(exc)}")
-            if attempt < 2:
-                sleep_time = 2 ** attempt
+            if attempt < max_attempts - 1:
+                sleep_time = min(30, 2 ** attempt)
                 logger.warning(f"All models failed on attempt {attempt+1}. Retrying in {sleep_time}s...")
                 time.sleep(sleep_time)
         if last_error is not None:
@@ -106,7 +107,8 @@ class _ModelChain:
     async def ainvoke(self, messages):
         import asyncio
         last_error = None
-        for attempt in range(3):
+        max_attempts = 5
+        for attempt in range(max_attempts):
             for model in self.models:
                 try:
                     if hasattr(model, "ainvoke"):
@@ -115,8 +117,8 @@ class _ModelChain:
                 except Exception as exc:  # pragma: no cover - fallback path
                     last_error = exc
                     logger.warning(f"Model ainvoke failed: {_format_error(exc)}")
-            if attempt < 2:
-                sleep_time = 2 ** attempt
+            if attempt < max_attempts - 1:
+                sleep_time = min(30, 2 ** attempt)
                 logger.warning(f"All models failed on attempt {attempt+1}. Retrying in {sleep_time}s...")
                 await asyncio.sleep(sleep_time)
         if last_error is not None:
@@ -130,7 +132,8 @@ class _ModelChain:
             def invoke(self_inner, messages):
                 import time
                 last_error = None
-                for attempt in range(3):
+                max_attempts = 5
+                for attempt in range(max_attempts):
                     for structured_model in structured_models:
                         try:
                             res = structured_model.invoke(messages)
@@ -139,8 +142,8 @@ class _ModelChain:
                         except Exception as exc:  # pragma: no cover - fallback path
                             last_error = exc
                             logger.warning(f"Structured model invoke failed: {_format_error(exc)}")
-                    if attempt < 2:
-                        sleep_time = 2 ** attempt
+                    if attempt < max_attempts - 1:
+                        sleep_time = min(30, 2 ** attempt)
                         logger.warning(f"All structured models failed on attempt {attempt+1}. Retrying in {sleep_time}s...")
                         time.sleep(sleep_time)
                 if last_error is not None:
@@ -150,7 +153,8 @@ class _ModelChain:
             async def ainvoke(self_inner, messages):
                 import asyncio
                 last_error = None
-                for attempt in range(3):
+                max_attempts = 5
+                for attempt in range(max_attempts):
                     for structured_model in structured_models:
                         try:
                             if hasattr(structured_model, "ainvoke"):
@@ -162,8 +166,8 @@ class _ModelChain:
                         except Exception as exc:  # pragma: no cover - fallback path
                             last_error = exc
                             logger.warning(f"Structured model ainvoke failed: {_format_error(exc)}")
-                    if attempt < 2:
-                        sleep_time = 2 ** attempt
+                    if attempt < max_attempts - 1:
+                        sleep_time = min(30, 2 ** attempt)
                         logger.warning(f"All structured models failed on attempt {attempt+1}. Retrying in {sleep_time}s...")
                         await asyncio.sleep(sleep_time)
                 if last_error is not None:
