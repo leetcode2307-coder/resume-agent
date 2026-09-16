@@ -37,9 +37,14 @@ def _build_output_filename(full_name: str | None, role: str | None) -> str:
     return f"{name_part}_{role_part}_{timestamp}_{unique_suffix}.pdf"
 
 async def process_job_async(job_id: str, request: dict):
-    redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
+    if REDIS_URL.startswith("rediss://"):
+        redis_client = aioredis.from_url(REDIS_URL, decode_responses=True, ssl_cert_reqs="none")
+    else:
+        redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
+        
     try:
         final_state = {}
+
         
         job_data_str = await redis_client.get(f"job:{job_id}")
         if job_data_str:
@@ -137,10 +142,13 @@ async def process_job_async(job_id: str, request: dict):
 
     except Exception as exc:
         logger.exception(f"Job {job_id} failed")
-        job_data_str = await redis_client.get(f"job:{job_id}")
-        job_data = json.loads(job_data_str) if job_data_str else {"status": "error", "events": []}
-        job_data["status"] = "error"
-        job_data["error"] = str(exc)
-        await redis_client.set(f"job:{job_id}", json.dumps(job_data), ex=7200)
+        try:
+            job_data_str = await redis_client.get(f"job:{job_id}")
+            job_data = json.loads(job_data_str) if job_data_str else {"status": "error", "events": []}
+            job_data["status"] = "error"
+            job_data["error"] = str(exc)
+            await redis_client.set(f"job:{job_id}", json.dumps(job_data), ex=7200)
+        except Exception as inner_exc:
+            logger.error(f"Failed to update job {job_id} error status in Redis: {inner_exc}")
     finally:
         await redis_client.aclose()
