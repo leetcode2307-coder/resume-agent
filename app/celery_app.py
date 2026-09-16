@@ -23,6 +23,8 @@ celery_app.conf.update(
     result_serializer='json',
     timezone='UTC',
     enable_utc=True,
+    worker_max_tasks_per_child=2,      # Recycle worker after 2 tasks to free memory
+    worker_max_memory_per_child=250000 # Recycle if worker memory exceeds ~250MB
 )
 
 @celery_app.task(bind=True)
