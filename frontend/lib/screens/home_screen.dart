@@ -527,13 +527,41 @@ class _HomeScreenState extends State<HomeScreen> {
     final agents = _workflow.completedAgents;
     final running = _workflow.status == WorkflowStatus.running;
 
-    bool isCompleted(String agent) => agents.contains(agent);
+    int count(String agent) => agents.where((a) => a == agent).length;
+
     bool isActive(String agent) {
       if (!running) return false;
-      final order = ['analyzer', 'rewriter', 'critic', 'interview_prep'];
-      final lastDone = order.lastIndexWhere(agents.contains);
-      final nextIdx = lastDone + 1;
-      return nextIdx < order.length && order[nextIdx] == agent;
+      
+      final analyzerCount = count('analyzer');
+      final rewriterCount = count('rewriter');
+      final criticCount = count('critic');
+      final interviewCount = count('interview_prep');
+
+      if (agent == 'analyzer') return analyzerCount == 0;
+      
+      if (agent == 'interview_prep') return analyzerCount > 0 && interviewCount == 0;
+
+      if (agent == 'rewriter') {
+        if (analyzerCount == 0) return false;
+        if (_workflow.criticHistory.isNotEmpty) {
+          final lastCritic = _workflow.criticHistory.last;
+          final score = lastCritic.criticScore ?? 0.0;
+          final iteration = lastCritic.rewriteIteration;
+          if (score >= 8.0 || iteration >= 3) return false;
+        }
+        return rewriterCount == criticCount;
+      }
+
+      if (agent == 'critic') {
+        return rewriterCount > criticCount;
+      }
+
+      return false;
+    }
+
+    bool isCompleted(String agent) {
+      if (isActive(agent)) return false;
+      return agents.contains(agent);
     }
 
     return Container(
@@ -605,15 +633,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 PipelineStep(
                   label: 'Analyzer',
                   icon: Icons.manage_search_rounded,
-                  color: isCompleted('analyzer') ? Theme.of(context).semantics.success : Theme.of(context).colorScheme.primary,
+                  color: agents.contains('analyzer') ? Theme.of(context).semantics.success : Theme.of(context).colorScheme.primary,
                   completed: isCompleted('analyzer'),
-                  active: isActive('analyzer') || (running && agents.isEmpty),
+                  active: isActive('analyzer'),
                   fixedLineWidth: isMobile ? 30 : null,
                 ),
                 PipelineStep(
                   label: 'Rewriter',
                   icon: Icons.edit_note_rounded,
-                  color: isCompleted('rewriter') ? Theme.of(context).semantics.success : Theme.of(context).colorScheme.primary,
+                  color: agents.contains('rewriter') ? Theme.of(context).semantics.success : Theme.of(context).colorScheme.primary,
                   completed: isCompleted('rewriter'),
                   active: isActive('rewriter'),
                   fixedLineWidth: isMobile ? 30 : null,
@@ -621,7 +649,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 PipelineStep(
                   label: 'Critique',
                   icon: Icons.rate_review_rounded,
-                  color: isCompleted('critic') ? Theme.of(context).semantics.success : Theme.of(context).colorScheme.primary,
+                  color: agents.contains('critic') ? Theme.of(context).semantics.success : Theme.of(context).colorScheme.primary,
                   completed: isCompleted('critic'),
                   active: isActive('critic'),
                   fixedLineWidth: isMobile ? 30 : null,
@@ -629,7 +657,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 PipelineStep(
                   label: 'Interview',
                   icon: Icons.record_voice_over_rounded,
-                  color: isCompleted('interview_prep') ? Theme.of(context).semantics.success : Theme.of(context).colorScheme.primary,
+                  color: agents.contains('interview_prep') ? Theme.of(context).semantics.success : Theme.of(context).colorScheme.primary,
                   completed: isCompleted('interview_prep'),
                   active: isActive('interview_prep'),
                   isLast: true,

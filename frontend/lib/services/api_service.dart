@@ -284,17 +284,24 @@ class ApiService {
   Stream<WorkflowState> pollJob(String jobId, String? token) async* {
     WorkflowState state = const WorkflowState(status: WorkflowStatus.running);
     yield state;
-    
-    final uri = Uri.parse('$_baseUrl/jobs/$jobId');
-    final headers = <String, String>{};
-    if (token != null) headers['Authorization'] = 'Bearer $token';
 
+    final uri = Uri.parse('$_baseUrl/jobs/$jobId');
     int lastProcessedEventCount = 0;
+    int retryCount = 0;
+    const maxRetries = 10;
 
     while (true) {
       try {
-        final response = await http.get(uri, headers: headers);
+        // Build headers fresh each iteration so a refreshed token is always used
+        final headers = <String, String>{};
+        if (token != null) headers['Authorization'] = 'Bearer $token';
+
+        final response = await http
+            .get(uri, headers: headers)
+            .timeout(const Duration(seconds: 20));
+
         if (response.statusCode == 200) {
+          retryCount = 0; // reset on success
           final data = jsonDecode(response.body);
           final events = data['events'] as List<dynamic>? ?? [];
           final status = data['status'] as String?;
@@ -314,26 +321,45 @@ class ApiService {
 
           if (status == 'completed' || status == 'error') {
             if (status == 'completed') {
-               // Save to local cache for persistence across backend restarts
-               final prefs = await SharedPreferences.getInstance();
-               await prefs.setString('job_data_$jobId', response.body);
-
-               if (state.status != WorkflowStatus.completed) {
-                 state = state.copyWith(status: WorkflowStatus.completed);
-                 yield state;
-               }
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('job_data_$jobId', response.body);
+              if (state.status != WorkflowStatus.completed) {
+                state = state.copyWith(status: WorkflowStatus.completed);
+                yield state;
+              }
             }
             if (status == 'error' && state.status != WorkflowStatus.error) {
-               state = state.copyWith(status: WorkflowStatus.error, errorMessage: data['error'] as String? ?? 'Unknown backend error');
-               yield state;
+              state = state.copyWith(
+                status: WorkflowStatus.error,
+                errorMessage: data['error'] as String? ?? 'Unknown backend error',
+              );
+              yield state;
             }
             break;
           }
+        } else if (response.statusCode == 401 ||
+            response.statusCode == 429 ||
+            response.statusCode == 502 ||
+            response.statusCode == 503 ||
+            response.statusCode == 504) {
+          // Transient error (expired token, rate-limit, cold start) — retry with backoff
+          retryCount++;
+          if (retryCount > maxRetries) {
+            yield state.copyWith(
+              status: WorkflowStatus.error,
+              errorMessage:
+                  'Connection failed after $maxRetries retries (HTTP ${response.statusCode}). Please reset and try again.',
+            );
+            break;
+          }
+          final delay = Duration(seconds: (3 * retryCount).clamp(3, 30));
+          await Future.delayed(delay);
+          continue;
         } else if (response.statusCode == 404) {
-          // Attempt to fallback to local cache
+          // Backend restarted — try local cache
           final prefs = await SharedPreferences.getInstance();
           final cachedBody = prefs.getString('job_data_$jobId');
-          
+
           if (cachedBody != null) {
             final data = jsonDecode(cachedBody);
             final events = data['events'] as List<dynamic>? ?? [];
@@ -348,22 +374,38 @@ class ApiService {
               state = _applyEvent(state, events[i] as Map<String, dynamic>);
               yield state;
             }
-            
+
             state = state.copyWith(status: WorkflowStatus.completed);
             yield state;
           } else {
-            yield state.copyWith(status: WorkflowStatus.error, errorMessage: 'Job not found (Backend restarted & no local cache found).');
+            yield state.copyWith(
+              status: WorkflowStatus.error,
+              errorMessage: 'Job not found (Backend restarted & no local cache found).',
+            );
           }
           break;
         } else {
-          yield state.copyWith(status: WorkflowStatus.error, errorMessage: 'Failed to poll job: ${response.statusCode}');
+          yield state.copyWith(
+            status: WorkflowStatus.error,
+            errorMessage: 'Failed to poll job: ${response.statusCode}',
+          );
           break;
         }
       } catch (e) {
-        yield state.copyWith(status: WorkflowStatus.error, errorMessage: e.toString());
-        break;
+        // Network errors (connection closed, timeout) — retry with backoff
+        retryCount++;
+        if (retryCount > maxRetries) {
+          yield state.copyWith(
+            status: WorkflowStatus.error,
+            errorMessage: 'Network error after $maxRetries retries: ${e.toString()}',
+          );
+          break;
+        }
+        final delay = Duration(seconds: (3 * retryCount).clamp(3, 30));
+        await Future.delayed(delay);
+        continue;
       }
-      
+
       await Future.delayed(const Duration(seconds: 2));
     }
   }

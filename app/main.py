@@ -55,7 +55,12 @@ GENERATED_PDFS_DIR.mkdir(parents=True, exist_ok=True)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://majestic-cheesecake-80d98b.netlify.app",
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -265,19 +270,16 @@ async def workflow_result(request: Request, payload: WorkflowRequest, user = Dep
             # 1. Try LaTeX compilation
             pdf_path = None
             latex_code = ""
+            latex_code = await asyncio.to_thread(resume_builder, final_state)
+
             try:
-                latex_code = await asyncio.to_thread(resume_builder, final_state)
-                
-                # No longer rendering LaTeX to PDF as per instructions
                 pdf_path = await asyncio.to_thread(
                     render_latex_to_pdf,
                     latex_source=latex_code,
                     output_pdf=output_path,
                 )
-
-            except Exception as exc:
-                logger.error(f"Failed to generate PDF: {exc}")
-                raise
+            except Exception as pdf_exc:
+                logger.warning(f"PDF rendering failed, latex_code preserved: {pdf_exc}")
 
             final_response = {
                 "event": "workflow_completed",

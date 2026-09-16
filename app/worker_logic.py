@@ -93,14 +93,16 @@ async def process_job_async(job_id: str, request: dict):
 
         latex_code = await asyncio.to_thread(resume_builder, final_state)
         pdf_path = None
-        pdf_path = await asyncio.to_thread(
-            render_latex_to_pdf,
-            latex_source=latex_code,
-            output_pdf=output_path,
-        )
-
-        if pdf_path:
-            await asyncio.to_thread(upload_pdf_to_s3, str(pdf_path), output_filename)
+        try:
+            pdf_path = await asyncio.to_thread(
+                render_latex_to_pdf,
+                latex_source=latex_code,
+                output_pdf=output_path,
+            )
+            if pdf_path:
+                await asyncio.to_thread(upload_pdf_to_s3, str(pdf_path), output_filename)
+        except Exception as pdf_exc:
+            logger.warning(f"PDF generation failed (latex_code still preserved): {pdf_exc}")
 
         final_response = {
             "event": "workflow_completed",
