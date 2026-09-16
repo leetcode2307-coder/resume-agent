@@ -31,7 +31,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 
 from app.graph.workflow import workflow_result_async
 from app.latex_executer import render_latex_to_pdf
@@ -68,13 +68,13 @@ app.add_middleware(
 
 
 class WorkflowRequest(BaseModel):
-    resume_text: str
-    job_description: str
-    full_name: str | None = None
-    email: str | None = None
-    phone: str | None = None
-    linkedin_url: str | None = None
-    github_url: str | None = None
+    resume_text: str = Field(..., max_length=50000, description="The resume text content.")
+    job_description: str = Field(..., max_length=50000, description="The job description content.")
+    full_name: str | None = Field(None, max_length=150)
+    email: str | None = Field(None, max_length=150)
+    phone: str | None = Field(None, max_length=50)
+    linkedin_url: str | None = Field(None, max_length=500)
+    github_url: str | None = Field(None, max_length=500)
 
     @field_validator("resume_text", "job_description", mode="before")
     @classmethod
@@ -213,133 +213,7 @@ async def get_job(request: Request, job_id: str, user = Depends(get_current_user
 
     return job_data
 
-@app.post("/workflow-result")
-@limiter.limit("5/minute")
-async def workflow_result(request: Request, payload: WorkflowRequest, user = Depends(get_current_user)):
-    async def event_generator():
-        final_state = {}
 
-        try:
-            queue = asyncio.Queue()
-
-            async def consume_workflow():
-                try:
-                    async for event in workflow_result_async(
-                        resume_text=payload.resume_text,
-                        job_description=payload.job_description,
-                        full_name=payload.full_name,
-                        email=payload.email,
-                        phone=payload.phone,
-                        linkedin_url=payload.linkedin_url,
-                        github_url=payload.github_url,
-                    ):
-                        await queue.put(("event", event))
-                    await queue.put(("done", None))
-                except asyncio.CancelledError:
-                    pass
-                except Exception as e:
-                    await queue.put(("error", e))
-
-            consumer_task = asyncio.create_task(consume_workflow())
-
-            while True:
-                try:
-                    msg_type, msg_data = await asyncio.wait_for(queue.get(), timeout=15.0)
-                    
-                    if msg_type == "done":
-                        break
-                    elif msg_type == "error":
-                        raise msg_data
-                        
-                    event = msg_data
-                    if not isinstance(event, dict):
-                        continue
-
-                    if event.get("event") == "workflow_error":
-                        yield "data: " + json.dumps(event, default=str) + "\n\n"
-                        consumer_task.cancel()
-                        return
-
-                    if event.get("event") == "workflow_state_ready":
-                        final_state = dict(event.get("data", {}).get("state", {}))
-                        continue
-
-                    yield "data: " + json.dumps(event, default=str) + "\n\n"
-                    
-                except asyncio.TimeoutError:
-                    # Keep-alive ping to prevent client/proxy from dropping the idle connection
-                    yield 'data: {"event": "ping"}\n\n'
-                    continue
-
-            if not final_state:
-                final_state = {}
-
-            final_state["full_name"] = payload.full_name
-            final_state["email"] = payload.email
-            final_state["phone"] = payload.phone
-            final_state["linkedin_url"] = payload.linkedin_url
-            final_state["github_url"] = payload.github_url
-
-            if not final_state.get("resume_text"):
-                raise ValueError("Final workflow state is missing resume_text.")
-
-            output_filename = _build_output_filename(
-                full_name=payload.full_name,
-                role=final_state.get("role"),
-            )
-            output_path = GENERATED_PDFS_DIR / output_filename
-
-            # 1. Try LaTeX compilation
-            pdf_path = None
-            latex_code = ""
-            latex_code = await asyncio.to_thread(resume_builder, final_state)
-
-            try:
-                pdf_path = await asyncio.to_thread(
-                    render_latex_to_pdf,
-                    latex_source=latex_code,
-                    output_pdf=output_path,
-                )
-            except Exception as pdf_exc:
-                logger.warning(f"PDF rendering failed, latex_code preserved: {pdf_exc}")
-
-            final_response = {
-                "event": "workflow_completed",
-                "agent": "workflow",
-                "data": {
-                    "state": final_state,
-                    "pdf_filename": output_filename if pdf_path else None,
-                    "pdf_path": str(pdf_path) if pdf_path else None,
-                    "latex_code": latex_code,
-                },
-            }
-
-            yield "data: " + json.dumps(final_response, default=str) + "\n\n"
-
-        except asyncio.CancelledError:
-            logger.warning("Client disconnected while streaming workflow events.")
-            raise
-        except Exception as exc:
-            logger.exception("Workflow request failed")
-            yield "data: " + json.dumps(
-                {
-                    "event": "workflow_error",
-                    "agent": "workflow",
-                    "error": str(exc),
-                    "error_type": type(exc).__name__,
-                },
-                default=str,
-            ) + "\n\n"
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
 
 # Serve Flutter Web frontend in production
 frontend_build = Path(__file__).resolve().parent.parent / "frontend" / "build" / "web"

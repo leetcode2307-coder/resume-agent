@@ -25,6 +25,11 @@ GoRouter createRouter(AuthProvider authProvider) {
 
       return null;
     },
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Text('Page not found: ${state.uri.path}'),
+      ),
+    ),
     routes: [
       GoRoute(
         path: '/login',
@@ -33,7 +38,7 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/home',
         builder: (context, state) {
-          final jobId = state.extra as String?;
+          final jobId = state.uri.queryParameters['jobId'] ?? state.extra as String?;
           return HomeScreen(key: ValueKey(jobId ?? 'new'), jobId: jobId);
         },
       ),

@@ -94,7 +94,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         final job = _jobs[index];
                         return InkWell(
                           onTap: () {
-                            context.push('/home', extra: job.jobId);
+                            context.push(Uri(path: '/home', queryParameters: {'jobId': job.jobId}).toString());
                           },
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
