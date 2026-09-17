@@ -1,16 +1,16 @@
 \documentclass[10pt,a4paper]{article}
 
-% ── Page geometry ─────────────────────────────────────────────────────────────
+
 \usepackage[top=0.5in, bottom=0.5in, left=0.6in, right=0.6in]{geometry}
 
-% ── Core packages ─────────────────────────────────────────────────────────────
+
 \usepackage{enumitem}
 \usepackage{hyperref}
 \usepackage{xcolor}
-\usepackage{microtype}       % better text fitting — fewer overfull hboxes
+\usepackage{microtype}       
 \usepackage{parskip}
 
-% ── Colors ────────────────────────────────────────────────────────────────────
+
 \definecolor{headingblue}{HTML}{1A3A5C}
 \definecolor{linkgray}{HTML}{2C3E50}
 
@@ -21,7 +21,7 @@
     hidelinks
 }
 
-% ── Section headings (no titlesec dependency) ─────────────────────────────────
+
 \makeatletter
 \renewcommand{\section}{\@startsection{section}{1}{\z@}
   {-0.8ex \@plus -0.3ex \@minus -0.2ex}
@@ -29,7 +29,7 @@
   {\normalfont\normalsize\bfseries\color{headingblue}\uppercase}}
 \makeatother
 
-% ── List spacing ──────────────────────────────────────────────────────────────
+
 \setlist[itemize]{
     leftmargin=1.4em,
     topsep=1pt,
@@ -39,13 +39,13 @@
     label=\textbullet
 }
 
-% ── Misc ──────────────────────────────────────────────────────────────────────
+
 \pagestyle{empty}
 \raggedbottom
 \setlength{\parskip}{0pt}
 \setlength{\parindent}{0pt}
 
-% ── Helper: thin rule under each section ─────────────────────────────────────
+
 \newcommand{\sectionrule}{%
   \vspace{-4pt}%
   \noindent\rule{\linewidth}{0.4pt}%
@@ -54,14 +54,14 @@
 
 \begin{document}
 
-% ── Header ────────────────────────────────────────────────────────────────────
+
 \begin{center}
     {\Large\bfseries\color{headingblue} \VAR{full_name}}\\[3pt]
     {\small \VAR{contact_line}}
 \end{center}
 \vspace{2pt}
 
-% ── Summary ───────────────────────────────────────────────────────────────────
+
 \BLOCK{ if summary }
 \section*{Summary}
 \sectionrule
@@ -69,7 +69,7 @@
 \vspace{3pt}
 \BLOCK{ endif }
 
-% ── Experience ────────────────────────────────────────────────────────────────
+
 \BLOCK{ if experience }
 \section*{Experience}
 \sectionrule
@@ -90,7 +90,7 @@
 \BLOCK{ endfor }
 \BLOCK{ endif }
 
-% ── Projects ──────────────────────────────────────────────────────────────────
+
 \BLOCK{ if projects }
 \section*{Projects}
 \sectionrule
@@ -112,7 +112,7 @@
 \BLOCK{ endfor }
 \BLOCK{ endif }
 
-% ── Education ─────────────────────────────────────────────────────────────────
+
 \BLOCK{ if education }
 \section*{Education}
 \sectionrule
@@ -133,7 +133,7 @@
 \BLOCK{ endfor }
 \BLOCK{ endif }
 
-% ── Skills ────────────────────────────────────────────────────────────────────
+
 \BLOCK{ if skills }
 \section*{Skills}
 \sectionrule
@@ -145,7 +145,7 @@
 \vspace{2pt}
 \BLOCK{ endif }
 
-% ── Certifications ────────────────────────────────────────────────────────────
+
 \BLOCK{ if certifications }
 \section*{Certifications}
 \sectionrule
@@ -157,7 +157,7 @@
 \vspace{2pt}
 \BLOCK{ endif }
 
-% ── Achievements ─────────────────────────────────────────────────────────────
+
 \BLOCK{ if achievements }
 \section*{Achievements}
 \sectionrule

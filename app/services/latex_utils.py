@@ -86,7 +86,7 @@ def escape_latex(text: Any) -> Any:
     if isinstance(text, list):
         return [escape_latex(i) for i in text]
     if isinstance(text, dict):
-        return {k: escape_latex(v) for k, v in text.items()}
+        return {escape_latex(str(k)): escape_latex(v) for k, v in text.items()}
     if hasattr(text, 'model_dump'):
         return escape_latex(text.model_dump())
     if hasattr(text, '__dict__'):

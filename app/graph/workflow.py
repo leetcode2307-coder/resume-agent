@@ -70,7 +70,6 @@ def _build_workflow():
     graph.add_conditional_edges(
         "analyzer_node",
         should_rewrite,
-        ["rewriter_node", "interview_agent"],
     )
 
     graph.add_edge("rewriter_node", "critic_agent")
