@@ -209,6 +209,37 @@ class ApiService {
 
   Stream<WorkflowState> pollJob(String jobId, String? token) async* {
     WorkflowState state = const WorkflowState(status: WorkflowStatus.running);
+
+    // 1. FAST PATH: Check local cache before hitting the network.
+    final prefs = await SharedPreferences.getInstance();
+    final cachedBody = prefs.getString('job_data_$jobId');
+    if (cachedBody != null) {
+      try {
+        final data = jsonDecode(cachedBody);
+        final status = data['status'] as String?;
+        
+        // If the job is already fully completed and cached locally, load it instantly.
+        if (status == 'completed') {
+          final events = data['events'] as List<dynamic>? ?? [];
+          final inputs = data['inputs'] as Map<String, dynamic>?;
+
+          if (inputs != null) {
+            state = state.copyWith(requestInputs: WorkflowRequest.fromJson(inputs));
+          }
+
+          for (int i = 0; i < events.length; i++) {
+            state = _applyEvent(state, events[i] as Map<String, dynamic>);
+          }
+          
+          state = state.copyWith(status: WorkflowStatus.completed);
+          yield state;
+          return; // Exit stream entirely! No network request needed.
+        }
+      } catch (e) {
+        // Ignore cache parsing errors and fall back to network
+      }
+    }
+
     yield state;
 
     final uri = Uri.parse('$_baseUrl/jobs/$jobId');

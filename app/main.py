@@ -201,10 +201,10 @@ async def get_job(request: Request, job_id: str, user = Depends(get_current_user
                 from datetime import timedelta
                 created_at = datetime.fromisoformat(created_at_str)
                 age = datetime.now(timezone.utc) - created_at
-                if age > timedelta(minutes=10):
+                if age > timedelta(minutes=5):
                     job_data["status"] = "error"
                     job_data["error"] = (
-                        "Job timed out after 10 minutes. "
+                        "Job timed out after 5 minutes. "
                         "The worker may have crashed. Please try again."
                     )
                     await redis_client.set(f"job:{job_id}", json.dumps(job_data), ex=3600)
