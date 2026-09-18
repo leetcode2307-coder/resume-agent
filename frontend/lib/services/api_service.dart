@@ -12,8 +12,8 @@ import '../models/workflow_models.dart';
 
 class ApiService {
   // https://resume-agent-1-lfag.onrender.com
-  static const String _baseUrl = 'https://resume-agent-1-lfag.onrender.com';
-  // static const String _baseUrl = 'http://127.0.0.1:8000';
+  // static const String _baseUrl = 'https://resume-agent-1-lfag.onrender.com';
+  static const String _baseUrl = 'http://15.252.16.124:8000';
 
 
   WorkflowState _applyEvent(WorkflowState state, Map<String, dynamic> event) {
