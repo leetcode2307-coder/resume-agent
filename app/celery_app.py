@@ -25,8 +25,8 @@ celery_app.conf.update(
     enable_utc=True,
     worker_max_tasks_per_child=2,      # Recycle worker after 2 tasks to free memory
     worker_max_memory_per_child=250000, # Recycle if worker memory exceeds ~250MB
-    task_time_limit=300,               # Hard kill task after 5 minutes
-    task_soft_time_limit=270           # Soft timeout at 4.5 minutes
+    task_time_limit=900,               # Hard kill task after 15 minutes
+    task_soft_time_limit=870           # Soft timeout at 14.5 minutes
 )
 
 @celery_app.task(bind=True)
