@@ -51,12 +51,12 @@ services:
     volumes:
       - ./generated_pdfs:/app/generated_pdfs
 
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - api
+  # frontend:
+  #   build: ./frontend
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - api
 
 volumes:
   redis_data:
