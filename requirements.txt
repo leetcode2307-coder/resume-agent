@@ -9,6 +9,7 @@ langchain-core
 langchain-community
 langchain-openrouter
 langgraph
+langchain_groq
 
 
 celery>=5.3.6
