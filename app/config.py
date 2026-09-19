@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     xkiro_api_key: str = ""
     primary_model: str = "openai/gpt-oss-120b"
-    fallback_model: str = "deepseek/deepseek-v4-flash"
+    fallback_model: str = "deepseek/deepseek-v4-flash-0731:free"
     gemma_model: str = "google/gemma-4-31b-it:free"
     glm_model: str = "z-ai/glm-5.2:free"
     nemotron_model: str = "nvidia/nemotron-3.5-lightning:free"
