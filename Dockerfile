@@ -2,6 +2,7 @@
 FROM python:3.12-slim
 
 # Install system dependencies, including LaTeX (XeTeX) for PDF generation
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     texlive-xetex \
     texlive-fonts-recommended \
