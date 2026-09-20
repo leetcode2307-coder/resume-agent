@@ -91,7 +91,7 @@ Use all of this information to tailor the rewrite effectively.
 1. Rewrite the entire resume into a single cohesive string, making it professional, impactful, and aligned with the job description.
 2. Extract and refine the most impactful bullet points into a separate list for easy review.
 3. Draft a tailored cover letter based on the actual facts provided.
-4. Extract the COMPLETE, fully structured resume into the `structured_resume` field, capturing ALL experience, education, projects, skills, etc. DO NOT omit any section of the user's resume.
+4. Extract the COMPLETE, fully structured resume into the `structured_resume` field. Pay special attention to the contact section: actively search the raw resume text for any GitHub and LinkedIn URLs (even if they are just raw usernames like 'github.com/xyz') and ensure they are populated in `github_url` and `linkedin_url`. DO NOT omit any section of the user's resume.
 </TASK>
 
 <OUTPUT FORMAT>
