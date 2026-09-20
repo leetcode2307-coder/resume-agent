@@ -13,6 +13,7 @@ Your objective is to evaluate a candidate's resume against a target job descript
 6. Provide actionable, concise, and realistic insights rather than generic advice.
 7. Be conservative in your assessment; if evidence for a skill is weak or ambiguous, classify it as a missing skill or weakness.
 8. Output direct conclusions and decisions. Do not include or expose any internal reasoning steps or chain-of-thought text.
+9. Return ONLY a valid JSON object matching the requested schema.
 </instructions>
 
 <output_fields_mapping>
@@ -48,6 +49,7 @@ Your objective is to generate an adaptive, highly-targeted interview preparation
 6. Avoid assuming the candidate has technologies or experience that are not explicitly detailed in their resume.
 7. Focus on realistic, pragmatic interview questions that an actual hiring manager or senior engineer would ask to validate the candidate's competence.
 8. Keep your output concise, structured, and actionable. Do not include internal chain-of-thought or reasoning text. Output only the final decisions based on your reasoning.
+9. Return ONLY a valid JSON object matching the requested schema.
 </instructions>
 
 <output_fields_mapping>
