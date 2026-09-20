@@ -12,7 +12,7 @@ import '../models/workflow_models.dart';
 
 class ApiService {
   // https://resume-agent-1-lfag.onrender.com
-  static const String _baseUrl = 'http://15.252.16.124:8000';
+  static const String _baseUrl = 'http://65.2.142.137:8000';
 
 
   WorkflowState _applyEvent(WorkflowState state, Map<String, dynamic> event) {
@@ -246,15 +246,15 @@ class ApiService {
     int retryCount = 0;
     const maxRetries = 10;
     final pollingStartTime = DateTime.now();
-    const maxPollDuration = Duration(minutes: 10);
+    const maxPollDuration = Duration(minutes: 60);
 
     while (true) {
-      // Hard stop after 10 minutes — prevents zombie polling of stuck jobs
+      // Hard stop after 60 minutes — prevents zombie polling of stuck jobs
       if (DateTime.now().difference(pollingStartTime) > maxPollDuration) {
         yield state.copyWith(
           status: WorkflowStatus.error,
           errorMessage:
-              'Job timed out after 10 minutes with no result. '
+              'Job timed out after 60 minutes with no result. '
               'The server may be overloaded. Please reset and try again.',
         );
         break;

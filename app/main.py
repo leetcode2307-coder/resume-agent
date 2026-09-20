@@ -193,7 +193,7 @@ async def get_job(request: Request, job_id: str, user = Depends(get_current_user
         raise HTTPException(404, "Job not found")
     job_data = json.loads(job_data_str)
 
-    # Auto-timeout: if job is stuck in running/pending for >10 minutes, mark it as error
+    # Auto-timeout: if job is stuck in running/pending for >60 minutes, mark it as error
     if job_data.get("status") in ("running", "pending"):
         created_at_str = job_data.get("created_at")
         if created_at_str:
@@ -201,10 +201,10 @@ async def get_job(request: Request, job_id: str, user = Depends(get_current_user
                 from datetime import timedelta
                 created_at = datetime.fromisoformat(created_at_str)
                 age = datetime.now(timezone.utc) - created_at
-                if age > timedelta(minutes=15):
+                if age > timedelta(minutes=60):
                     job_data["status"] = "error"
                     job_data["error"] = (
-                        "Job timed out after 15 minutes. "
+                        "Job timed out after 60 minutes. "
                         "The worker may have crashed. Please try again."
                     )
                     await redis_client.set(f"job:{job_id}", json.dumps(job_data), ex=3600)
