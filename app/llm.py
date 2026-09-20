@@ -47,6 +47,7 @@ def _build_model(model_name: str) -> Any:
             model=_get_model_name(model_name),
             timeout=180,
             max_retries=3,
+            max_tokens=8192,
             callbacks=[TokenLoggingCallback()]
         )
     return ChatGroq(
@@ -54,6 +55,7 @@ def _build_model(model_name: str) -> Any:
         model=_get_model_name(model_name),
         timeout=150, 
         max_retries=3,
+        max_tokens=8192,
         callbacks=[TokenLoggingCallback()]
     )
 
@@ -123,6 +125,8 @@ class _ModelChain:
         raise RuntimeError("No models were configured for async invocation.")
 
     def with_structured_output(self, schema: Any, **kwargs):
+        if "method" not in kwargs:
+            kwargs["method"] = "json_mode"
         structured_models = [model.with_structured_output(schema, **kwargs) for model in self.models]
 
         class _StructuredInvoker:
