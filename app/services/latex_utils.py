@@ -86,7 +86,7 @@ def escape_latex(text: Any) -> Any:
     if isinstance(text, list):
         return [escape_latex(i) for i in text]
     if isinstance(text, dict):
-        return {escape_latex(str(k)): escape_latex(v) for k, v in text.items()}
+        return {str(k): escape_latex(v) for k, v in text.items()}
     if hasattr(text, 'model_dump'):
         return escape_latex(text.model_dump())
     if hasattr(text, '__dict__'):
@@ -129,12 +129,12 @@ def render_resume_latex(structured_resume: dict, contact_info: dict) -> str:
         contacts.append(f"\\href{{mailto:{contact_info['email']}}}{{{escaped_email}}}")
     if contact_info.get("phone"):
         contacts.append(escape_latex_string(contact_info["phone"]))
-    if contact_info.get("linkedin_url") and contact_info["linkedin_url"] not in ["[LinkedIn URL]", "linkedin.com", "https://linkedin.com"]:
+    if contact_info.get("linkedin_url") and contact_info["linkedin_url"] not in ["[LinkedIn URL]", "linkedin.com", "https://linkedin.com", "..."]:
         url = contact_info["linkedin_url"].replace('%', '\\%').replace('#', '\\#')
         if not url.startswith("http"):
             url = "https://" + url
         contacts.append(f"\\href{{{url}}}{{LinkedIn}}")
-    if contact_info.get("github_url") and contact_info["github_url"] not in ["[GitHub URL]", "github.com", "https://github.com"]:
+    if contact_info.get("github_url") and contact_info["github_url"] not in ["[GitHub URL]", "github.com", "https://github.com", "..."]:
         url = contact_info["github_url"].replace('%', '\\%').replace('#', '\\#')
         if not url.startswith("http"):
             url = "https://" + url

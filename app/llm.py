@@ -45,7 +45,7 @@ def _build_model(model_name: str) -> Any:
         return ChatOpenRouter(
             api_key=settings.openrouter_api_key,
             model=_get_model_name(model_name),
-            timeout=180,
+            timeout=600,
             max_retries=3,
             max_tokens=8192,
             callbacks=[TokenLoggingCallback()]
